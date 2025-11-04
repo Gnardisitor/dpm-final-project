@@ -8,9 +8,9 @@ Date: Feb 2nd, 2022
 
 ### This file should be moved to the project/ folder if you want to run it ###
 
-from utils.sound import Sound
 import time
 
+from utils.sound import Sound
 
 """We first generate a Sound object.
 
@@ -28,27 +28,27 @@ tone2 = Sound(duration=2.0, volume=80, pitch="A4")
 """Now we can use the sound after creation."""
 
 
-tone1.play() # Starts the tone1 playing on the speaker
-tone1.wait_done() # Will wait until tone1 is done playing
+tone1.play()  # Starts the tone1 playing on the speaker
+tone1.wait_done()  # Will wait until tone1 is done playing
 
 """ Play two notes simultaneously! """
-tone1.play() # Starts tone1 playing on the speaker
-tone2.play() # Starts tone2 playing
-tone2.wait_done() # Will wait until tone2 is done playing (2 seconds)
+tone1.play()  # Starts tone1 playing on the speaker
+tone2.play()  # Starts tone2 playing
+tone2.wait_done()  # Will wait until tone2 is done playing (2 seconds)
 
 """ Restart the same note! May cause static when done quickly. """
-tone1.play() # Starts tone1 playing on the speaker
-tone1.play() # Stops tone1, then restarts it very quickly
-tone1.play() # Does it again
-tone1.wait_done() # Will wait until tone1 is done playing or not making noise
+tone1.play()  # Starts tone1 playing on the speaker
+tone1.play()  # Stops tone1, then restarts it very quickly
+tone1.play()  # Does it again
+tone1.wait_done()  # Will wait until tone1 is done playing or not making noise
 
 """ Restart the same note! Use time.sleep to avoid making static. """
-tone1.play() # Starts tone1 playing on the speaker
+tone1.play()  # Starts tone1 playing on the speaker
 time.sleep(0.5)
-tone1.play() # Stops tone1, then restarts it
+tone1.play()  # Stops tone1, then restarts it
 time.sleep(0.5)
-tone1.play() # Does it again
-tone1.wait_done() # Will wait until tone1 is done playing or not making noise
+tone1.play()  # Does it again
+tone1.wait_done()  # Will wait until tone1 is done playing or not making noise
 
 
 """ And here's a shortcut for playing and waiting... """
@@ -82,15 +82,15 @@ organ_tone.wait_done()
 
 tone3 = Sound(duration=5.0, volume=80, pitch="A4")
 tone3.play()
-time.sleep(1) # wait
+time.sleep(1)  # wait
 
-tone3.set_volume(60) # quieter
+tone3.set_volume(60)  # quieter
 tone3.update_audio()
 time.sleep(1)
 
-tone3.set_volume(40) # and quieter
+tone3.set_volume(40)  # and quieter
 tone3.update_audio()
 time.sleep(1)
 
-tone3.set_volume(80) # and loud again!
+tone3.set_volume(80)  # and loud again!
 tone3.update_audio()

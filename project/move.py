@@ -22,17 +22,19 @@ EMERGENCY_STOP = TouchSensor(4)
 wait_ready_sensors()
 print("Done waiting.")
 
+
 def straight():
     RIGHT_MOTOR.set_dps(720)
     LEFT_MOTOR.set_dps(720)
+
 
 # def turnRight():
 #     while color:
 #         RIGHT_MOTOR.set_dps(720)
 #         LEFT_MOTOR.set_dps(720)
 
-def stop():
 
+def stop():
     """
     Main while loop to test the drum motor functionality,
     data is collected seperately using Audacity.
@@ -45,7 +47,7 @@ def stop():
                 break
 
             # Start the drum at 720 dps (120 bpm) if the start drum button is pressed
-           # if START_DRUM.is_pressed():
+            # if START_DRUM.is_pressed():
             #    straight()
 
             # Short delay
