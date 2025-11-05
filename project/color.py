@@ -1,15 +1,20 @@
 from math import sqrt
 from time import sleep
+import csv
 
 from utils.brick import EV3ColorSensor, TouchSensor, wait_ready_sensors
 
-COLORS = {
-    "red": [1, 0, 0],
-    "green": [0, 1, 0],
-    "blue": [0, 0, 1],
-    "white": [1, 1, 1],
-    "black": [0, 0, 0],
-}
+COLORS = {}
+
+with open("colors.csv", "r") as file:
+    reader = csv.reader(file)
+    for row in reader:
+        name = row[0]
+        r = float(row[1])
+        g = float(row[2])
+        b = float(row[3])
+        dist = sqrt(r * r + g * g + b * b)
+        COLORS[name] = [r / dist, g / dist, b / dist]
 
 print("Sensors waiting")
 TOUCH = TouchSensor(1)

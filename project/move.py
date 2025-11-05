@@ -4,64 +4,110 @@ from time import sleep
 
 from utils.brick import (
     Motor,
-    TouchSensor,
     wait_ready_sensors,
 )
 
 print("Program start.\nWaiting for sensors to turn on...")
 
-# 4 sensors 1234
-# 4 motors ABCD
-
 # Initialize motors and sensors
-RIGHT_MOTOR = Motor("C")
+RIGHT_MOTOR = Motor("A")
 LEFT_MOTOR = Motor("B")
-START_DRUM = TouchSensor(1)
-EMERGENCY_STOP = TouchSensor(4)
 
 wait_ready_sensors()
 print("Done waiting.")
 
 
-def straight():
-    RIGHT_MOTOR.set_dps(720)
-    LEFT_MOTOR.set_dps(720)
-
-
-# def turnRight():
-#     while color:
-#         RIGHT_MOTOR.set_dps(720)
-#         LEFT_MOTOR.set_dps(720)
-
-
-def stop():
+def move_straight_degrees(degrees, dps=720, poll=0.01):
     """
-    Main while loop to test the drum motor functionality,
-    data is collected seperately using Audacity.
+    Drive straight so each wheel turns 'degrees'.
+    Positive degrees move forward; negative move backward.
+    dps: target speed in degrees per second for each motor.
     """
+    # Determine direction from 'degrees'
+    direction = 1 if degrees >= 0 else -1
+    speed = abs(dps) * direction
+
+    # Read starting encoder positions
+    start_r = RIGHT_MOTOR.get_position()
+    start_l = LEFT_MOTOR.get_position()
+
+    # Compute absolute targets for each wheel
+    target_r = start_r + degrees
+    target_l = start_l + degrees
+
+    # Start both motors
+    RIGHT_MOTOR.set_dps(speed)
+    LEFT_MOTOR.set_dps(speed)
 
     try:
         while True:
-            # Break from loop if emergency stop is pressed
-            if EMERGENCY_STOP.is_pressed():
+            pos_r = RIGHT_MOTOR.get_position()
+            pos_l = LEFT_MOTOR.get_position()
+
+            # Remaining distance along the commanded direction
+            rem_r = (target_r - pos_r) * direction
+            rem_l = (target_l - pos_l) * direction
+
+            # Stop once either wheel has met or passed its target
+            if rem_r <= 0 or rem_l <= 0:
                 break
 
-            # Start the drum at 720 dps (120 bpm) if the start drum button is pressed
-            # if START_DRUM.is_pressed():
-            #    straight()
-
-            # Short delay
-            sleep(0.1)
-    except BaseException:
-        # Avoid errors crashing the program to stop the motor properly
-        pass
+            sleep(poll)
     finally:
-        # Stop the drum motor and exit code
+        # Hard stop both motors
         RIGHT_MOTOR.set_dps(0)
         LEFT_MOTOR.set_dps(0)
-        print("Emergency stop")
+
+
+def turn_degrees(degrees, dps=720, poll=0.01):
+    """
+    Turn in place by 'degrees'.
+    Positive degrees turn right (RIGHT motor backward, LEFT motor forward);
+    negative degrees turn left (RIGHT motor forward, LEFT motor backward).
+    dps: target speed in degrees per second for each motor.
+    """
+    abs_deg = abs(degrees)
+    if degrees >= 0:
+        # Turn right: RIGHT backward, LEFT forward
+        speed_r = -abs(dps)
+        speed_l = abs(dps)
+        start_r = RIGHT_MOTOR.get_position()
+        start_l = LEFT_MOTOR.get_position()
+        target_r = start_r - abs_deg
+        target_l = start_l + abs_deg
+    else:
+        # Turn left: RIGHT forward, LEFT backward
+        speed_r = abs(dps)
+        speed_l = -abs(dps)
+        start_r = RIGHT_MOTOR.get_position()
+        start_l = LEFT_MOTOR.get_position()
+        target_r = start_r + abs_deg
+        target_l = start_l - abs_deg
+
+    # Start both motors
+    RIGHT_MOTOR.set_dps(speed_r)
+    LEFT_MOTOR.set_dps(speed_l)
+
+    try:
+        while True:
+            pos_r = RIGHT_MOTOR.get_position()
+            pos_l = LEFT_MOTOR.get_position()
+
+            # Remaining distance along the commanded direction
+            rem_r = (target_r - pos_r) * (1 if speed_r >= 0 else -1)
+            rem_l = (target_l - pos_l) * (1 if speed_l >= 0 else -1)
+
+            # Stop once either wheel has met or passed its target
+            if rem_r <= 0 or rem_l <= 0:
+                break
+
+            sleep(poll)
+    finally:
+        # Hard stop both motors
+        RIGHT_MOTOR.set_dps(0)
+        LEFT_MOTOR.set_dps(0)
 
 
 if __name__ == "__main__":
-    straight()
-    stop()
+    # move_straight_degrees(360)
+    turn_degrees(90)
