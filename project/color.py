@@ -13,8 +13,7 @@ with open("colors.csv", "r") as file:
         r = float(row[1])
         g = float(row[2])
         b = float(row[3])
-        dist = sqrt(r * r + g * g + b * b)
-        COLORS[name] = [r / dist, g / dist, b / dist]
+        COLORS[name] = [r, g, b]
 
 print("Sensors waiting")
 TOUCH = TouchSensor(1)
@@ -23,14 +22,15 @@ wait_ready_sensors()
 print("Sensors ready")
 
 
-def color():
+def get_color():
+    # Read color and normalize
     color = COLOR.get_rgb()
     dist = sqrt(color[0] * color[0] + color[1] * color[1] + color[2] * color[2])
     color = [color[0] / dist, color[1] / dist, color[2] / dist]
-    print(f"Current color: {color}")
 
+    # Find closest color
     closest_name = ""
-    closest_dist = 10
+    closest_dist = 1
     for name, ref_color in COLORS.items():
         dist_list = [
             color[0] - ref_color[0],
@@ -45,14 +45,17 @@ def color():
         if dist < closest_dist:
             closest_dist = dist
             closest_name = name
-    print(f"Closest color: {closest_name}")
+
+    # Return closest color
+    return closest_name
 
 
 def test():
     try:
         while True:
             if TOUCH.is_pressed():
-                color()
+                color_name = get_color()
+                print(color_name)
 
             sleep(0.5)
     except BaseException:
