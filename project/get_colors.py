@@ -18,7 +18,19 @@ print("Sensors ready")
 def get_color():
     # Get normalized RGB vector from color sensor
     color = COLOR_SENSOR.get_rgb()
+
+    # Check for existence of color
+    if color[0] is None or color[1] is None or color[2] is None:
+        print("No color detected.")
+        return
+
     dist = sqrt(color[0] * color[0] + color[1] * color[1] + color[2] * color[2])
+
+    # Check for zero distance
+    if dist == 0:
+        print("No color detected.")
+        return
+
     color = [color[0] / dist, color[1] / dist, color[2] / dist]
     print(f"Current RGB vector: {color}.")
 
