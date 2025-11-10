@@ -1,8 +1,8 @@
+import csv
 from math import sqrt
 from time import sleep
-import csv
 
-from utils.brick import EV3ColorSensor, TouchSensor, wait_ready_sensors
+from utils.brick import EV3ColorSensor, wait_ready_sensors
 
 COLORS = {}
 
@@ -15,9 +15,9 @@ with open("colors.csv", "r") as file:
         b = float(row[3])
         COLORS[name] = [r, g, b]
 
-print("Sensors waiting")
-TOUCH = TouchSensor(1)
 COLOR = EV3ColorSensor(2)
+
+print("Sensors waiting")
 wait_ready_sensors()
 print("Sensors ready")
 
@@ -32,6 +32,7 @@ def get_color():
     closest_name = ""
     closest_dist = 1
     for name, ref_color in COLORS.items():
+        # Get euclidean distance
         dist_list = [
             color[0] - ref_color[0],
             color[1] - ref_color[1],
@@ -46,17 +47,15 @@ def get_color():
             closest_dist = dist
             closest_name = name
 
-    # Return closest color
     return closest_name
 
 
+# Simple test loop
 def test():
     try:
         while True:
-            if TOUCH.is_pressed():
-                color_name = get_color()
-                print(color_name)
-
+            color_name = get_color()
+            print(color_name)
             sleep(0.5)
     except BaseException:
         pass

@@ -7,9 +7,10 @@ from utils.brick import EV3ColorSensor, TouchSensor, wait_ready_sensors
 FILENAME = "colors.csv"
 COLORS = {}
 
-print("Sensors waiting")
 TOUCH_SENSOR = TouchSensor(1)
 COLOR_SENSOR = EV3ColorSensor(2)
+
+print("Sensors waiting")
 wait_ready_sensors()
 print("Sensors ready")
 
@@ -18,9 +19,6 @@ def get_color():
     # Get normalized RGB vector from color sensor
     color = COLOR_SENSOR.get_rgb()
     dist = sqrt(color[0] * color[0] + color[1] * color[1] + color[2] * color[2])
-    if dist == 0:
-        print("Read zero-length color vector; skipping.")
-        return
     color = [color[0] / dist, color[1] / dist, color[2] / dist]
     print(f"Current RGB vector: {color}.")
 
@@ -49,21 +47,15 @@ def test():
         while True:
             # Check if touch sensor is pressed
             if TOUCH_SENSOR.is_pressed():
-                # Write
                 get_color()
 
             sleep(0.5)
     except BaseException:
         rows = []
         for name, color in COLORS.items():
-            # If samples were accumulated, color is [sum_r, sum_g, sum_b, count]
-            if len(color) >= 4 and color[3]:
-                avg_r = color[0] / color[3]
-                avg_g = color[1] / color[3]
-                avg_b = color[2] / color[3]
-            else:
-                # Fallback if color already averaged or count missing
-                avg_r, avg_g, avg_b = (color[0], color[1], color[2])
+            avg_r = color[0] / color[3]
+            avg_g = color[1] / color[3]
+            avg_b = color[2] / color[3]
 
             print(f"Saving {name}: r={avg_r}, g={avg_g}, b={avg_b}.")
             rows.append({"name": name, "r": avg_r, "g": avg_g, "b": avg_b})

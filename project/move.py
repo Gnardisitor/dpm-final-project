@@ -1,113 +1,100 @@
 #!/usr/bin/env python3
 
+from math import pi
 from time import sleep
 
-from utils.brick import (
-    Motor,
-    wait_ready_sensors,
-)
-
-print("Program start.\nWaiting for sensors to turn on...")
+from utils.brick import Motor, wait_ready_sensors
 
 # Initialize motors and sensors
 RIGHT_MOTOR = Motor("A")
 LEFT_MOTOR = Motor("B")
 
+print("Sensors waiting")
 wait_ready_sensors()
-print("Done waiting.")
+print("Sensors ready")
+
+# Measure to find exact values
+WHEEL_DIAMETER = 4.3
+TURN_DIAMETER = 11.0
+
+# Computed values
+WHEEL_CIRCUMFERENCE = WHEEL_DIAMETER * pi
+TURN_CIRCUMFERENCE = TURN_DIAMETER * pi
+
+# Values for functions
+DPS = 540
+POLL = 0.01
 
 
-def move_straight_degrees(degrees, dps=720, poll=0.01):
-    """
-    Drive straight so each wheel turns 'degrees'.
-    Positive degrees move forward; negative move backward.
-    dps: target speed in degrees per second for each motor.
-    """
-    # Determine direction from 'degrees'
-    direction = 1 if degrees >= 0 else -1
-    speed = abs(dps) * direction
+def move(distance):
+    # Check for invalid distance
+    if distance == 0:
+        return
 
-    # Read starting encoder positions
-    start_r = RIGHT_MOTOR.get_position()
-    start_l = LEFT_MOTOR.get_position()
-
-    # Compute absolute targets for each wheel
-    target_r = start_r + degrees
-    target_l = start_l + degrees
-
-    # Start both motors
-    RIGHT_MOTOR.set_dps(speed)
-    LEFT_MOTOR.set_dps(speed)
+    # Compute encoder degrees
+    encoder_degrees = (distance / WHEEL_CIRCUMFERENCE) * 360
+    right_target = RIGHT_MOTOR.get_position() + encoder_degrees
+    left_target = LEFT_MOTOR.get_position() + encoder_degrees
 
     try:
+        # Set motors to move
+        if distance > 0:
+            RIGHT_MOTOR.set_dps(DPS)
+            LEFT_MOTOR.set_dps(DPS)
+        else:
+            RIGHT_MOTOR.set_dps(-DPS)
+            LEFT_MOTOR.set_dps(-DPS)
+
         while True:
-            pos_r = RIGHT_MOTOR.get_position()
-            pos_l = LEFT_MOTOR.get_position()
+            # Check remaining distance
+            right_remaining = right_target - RIGHT_MOTOR.get_position()
+            left_remaining = left_target - LEFT_MOTOR.get_position()
 
-            # Remaining distance along the commanded direction
-            rem_r = (target_r - pos_r) * direction
-            rem_l = (target_l - pos_l) * direction
-
-            # Stop once either wheel has met or passed its target
-            if rem_r <= 0 or rem_l <= 0:
+            if right_remaining <= 0 or left_remaining <= 0:
                 break
 
-            sleep(poll)
+            sleep(POLL)
     finally:
-        # Hard stop both motors
         RIGHT_MOTOR.set_dps(0)
         LEFT_MOTOR.set_dps(0)
 
 
-def turn_degrees(degrees, dps=720, poll=0.01):
-    """
-    Turn in place by 'degrees'.
-    Positive degrees turn right (RIGHT motor backward, LEFT motor forward);
-    negative degrees turn left (RIGHT motor forward, LEFT motor backward).
-    dps: target speed in degrees per second for each motor.
-    """
-    abs_deg = abs(degrees)
-    if degrees >= 0:
-        # Turn right: RIGHT backward, LEFT forward
-        speed_r = -abs(dps)
-        speed_l = abs(dps)
-        start_r = RIGHT_MOTOR.get_position()
-        start_l = LEFT_MOTOR.get_position()
-        target_r = start_r - abs_deg
-        target_l = start_l + abs_deg
-    else:
-        # Turn left: RIGHT forward, LEFT backward
-        speed_r = abs(dps)
-        speed_l = -abs(dps)
-        start_r = RIGHT_MOTOR.get_position()
-        start_l = LEFT_MOTOR.get_position()
-        target_r = start_r + abs_deg
-        target_l = start_l - abs_deg
+def turn(degrees):
+    # Check for invalid turn
+    if degrees == 0:
+        return
 
-    # Start both motors
-    RIGHT_MOTOR.set_dps(speed_r)
-    LEFT_MOTOR.set_dps(speed_l)
+    # Compute encoder degrees
+    arc_length = degrees / 360 * TURN_CIRCUMFERENCE
+    encoder_degrees = (arc_length / WHEEL_CIRCUMFERENCE) * 360
+    right_target = RIGHT_MOTOR.get_position() - encoder_degrees
+    left_target = LEFT_MOTOR.get_position() + encoder_degrees
 
     try:
+        # Set motors to move
+        if degrees > 0:
+            RIGHT_MOTOR.set_dps(-DPS)
+            LEFT_MOTOR.set_dps(DPS)
+        else:
+            RIGHT_MOTOR.set_dps(DPS)
+            LEFT_MOTOR.set_dps(-DPS)
+
         while True:
-            pos_r = RIGHT_MOTOR.get_position()
-            pos_l = LEFT_MOTOR.get_position()
+            # Check remaining distance
+            right_remaining = right_target - RIGHT_MOTOR.get_position()
+            left_remaining = left_target - LEFT_MOTOR.get_position()
 
-            # Remaining distance along the commanded direction
-            rem_r = (target_r - pos_r) * (1 if speed_r >= 0 else -1)
-            rem_l = (target_l - pos_l) * (1 if speed_l >= 0 else -1)
-
-            # Stop once either wheel has met or passed its target
-            if rem_r <= 0 or rem_l <= 0:
+            if right_remaining <= 0 or left_remaining <= 0:
                 break
 
-            sleep(poll)
+            sleep(POLL)
     finally:
-        # Hard stop both motors
         RIGHT_MOTOR.set_dps(0)
         LEFT_MOTOR.set_dps(0)
 
 
 if __name__ == "__main__":
-    # move_straight_degrees(360)
-    turn_degrees(90)
+    # Move forward 10 cm then turn 90 degrees to the right
+    move(10)
+    sleep(1)
+    turn(90)
