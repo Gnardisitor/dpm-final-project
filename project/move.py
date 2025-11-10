@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from math import pi
+from math import fabs, pi
 from time import sleep
 
 from utils.brick import Motor, wait_ready_sensors
@@ -47,8 +47,8 @@ def move(distance):
 
         while True:
             # Check remaining distance
-            right_remaining = right_target - RIGHT_MOTOR.get_position()
-            left_remaining = left_target - LEFT_MOTOR.get_position()
+            right_remaining = fabs(right_target - RIGHT_MOTOR.get_position())
+            left_remaining = fabs(left_target - LEFT_MOTOR.get_position())
 
             if right_remaining <= 0 or left_remaining <= 0:
                 break
@@ -81,8 +81,8 @@ def turn(degrees):
 
         while True:
             # Check remaining distance
-            right_remaining = right_target - RIGHT_MOTOR.get_position()
-            left_remaining = left_target - LEFT_MOTOR.get_position()
+            right_remaining = fabs(right_target - RIGHT_MOTOR.get_position())
+            left_remaining = fabs(left_target - LEFT_MOTOR.get_position())
 
             if right_remaining <= 0 or left_remaining <= 0:
                 break
