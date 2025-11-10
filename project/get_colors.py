@@ -16,6 +16,10 @@ print("Sensors ready")
 
 
 def get_color():
+    """
+    Adds to the dictionary the currently detected color, can sum multiple samples per color.
+    """
+
     # Get normalized RGB vector from color sensor
     color = COLOR_SENSOR.get_rgb()
 
@@ -55,6 +59,10 @@ def get_color():
 
 
 def test():
+    """
+    Simple loop to gather multiple samples and then save the results into a CSV file.
+    """
+
     try:
         while True:
             # Check if touch sensor is pressed
@@ -72,10 +80,9 @@ def test():
             print(f"Saving {name}: r={avg_r}, g={avg_g}, b={avg_b}.")
             rows.append({"name": name, "r": avg_r, "g": avg_g, "b": avg_b})
 
-        # Save to CSV
+        # Save to CSV (removed writing the header for easier parsing)
         with open(FILENAME, mode="w", newline="") as file:
             writer = csv.DictWriter(file, fieldnames=["name", "r", "g", "b"])
-            writer.writeheader()
             writer.writerows(rows)
 
 

@@ -4,8 +4,9 @@ from time import sleep
 
 from utils.brick import EV3ColorSensor, wait_ready_sensors
 
-COLORS = {}
+COLORS = {"unknown": [0.0, 0.0, 0.0]}
 
+# Load colors from CSV file into the dictionary
 with open("colors.csv", "r") as file:
     reader = csv.reader(file)
     for row in reader:
@@ -22,7 +23,16 @@ wait_ready_sensors()
 print("Sensors ready")
 
 
-def get_color():
+def get_color() -> str:
+    """
+    Get the closest color to the current reading
+
+    Returns
+    -------
+    str
+        Name of the closest color, unknown if no valid color is detected.
+    """
+
     # Read color and normalize
     color = COLOR.get_rgb()
 
@@ -61,7 +71,11 @@ def get_color():
 
 
 # Simple test loop
-def test():
+def test() -> None:
+    """
+    Simple test loop to print color readings.
+    """
+
     try:
         while True:
             color_name = get_color()
