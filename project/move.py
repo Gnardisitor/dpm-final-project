@@ -8,8 +8,8 @@ from color import get_color
 from utils.brick import Motor, TouchSensor, wait_ready_sensors
 
 # Initialize motors and sensors
-STOP = TouchSensor(1)
-RIGHT_MOTOR = Motor("A")
+STOP = TouchSensor(3)
+RIGHT_MOTOR = Motor("C")
 LEFT_MOTOR = Motor("B")
 
 print("Sensors waiting")
@@ -24,8 +24,8 @@ ORIENTATION = 0  # Horizontal facing right in degrees
 
 # Measured values
 WHEEL_DIAMETER = 4.3
-TURN_DIAMETER = 11.0
-TILE_SIZE = 10.0
+TURN_DIAMETER = 15.5
+TILE_SIZE = 25.0
 
 # Computed values
 WHEEL_CIRCUMFERENCE = WHEEL_DIAMETER * pi
@@ -470,15 +470,16 @@ def main_move() -> None:
 
 
 if __name__ == "__main__":
-    # Create process for movement
-    move_process = Process(target=main_move)
-    move_process.start()
-    print("Movement process started")
+    move(TILE_SIZE)
+    # # Create process for movement
+    # move_process = Process(target=main_move)
+    # move_process.start()
+    # print("Movement process started")
 
-    # Wait for movement to finish
-    while move_process.is_alive() and not interrupt():
-        sleep(POLL)
+    # # Wait for movement to finish
+    # while move_process.is_alive() and not interrupt():
+    #     sleep(POLL)
 
-    move_process.terminate()
-    move_process.join()
-    print("Movement process ended")
+    # move_process.terminate()
+    # move_process.join()
+    # print("Movement process ended")

@@ -18,7 +18,7 @@ with open("colors.csv", "r") as file:
         b = float(row[3])
         COLORS[name] = [r, g, b]
 
-COLOR = EV3ColorSensor(2)
+COLOR = EV3ColorSensor(4)
 
 print("Sensors waiting")
 wait_ready_sensors()
