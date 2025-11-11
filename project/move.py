@@ -8,15 +8,13 @@ from color import get_color
 from utils.brick import Motor, TouchSensor, wait_ready_sensors
 
 # Initialize motors and sensors
-STOP = TouchSensor(1)
-RIGHT_MOTOR = Motor("A")
+STOP = TouchSensor(3)
+RIGHT_MOTOR = Motor("C")
 LEFT_MOTOR = Motor("B")
 
 print("Sensors waiting")
 wait_ready_sensors()
 print("Sensors ready")
-
-# All current values are temporary and need to be measured.
 
 # Coordinate system values (tiles go from 1 to 5)
 COORDINATE = (1, 1)
@@ -24,8 +22,8 @@ ORIENTATION = 0  # Horizontal facing right in degrees
 
 # Measured values
 WHEEL_DIAMETER = 4.3
-TURN_DIAMETER = 11.0
-TILE_SIZE = 10.0
+TURN_DIAMETER = 15.5
+TILE_SIZE = 25.0
 
 # Computed values
 WHEEL_CIRCUMFERENCE = WHEEL_DIAMETER * pi
@@ -53,8 +51,7 @@ def move(distance: float) -> None:
 
     # Compute encoder degrees
     encoder_degrees = (distance / WHEEL_CIRCUMFERENCE) * 360
-    right_target = RIGHT_MOTOR.get_position() + encoder_degrees
-    left_target = LEFT_MOTOR.get_position() + encoder_degrees
+    move_time = fabs(encoder_degrees / DPS)
 
     try:
         # Set motors to move
@@ -64,16 +61,8 @@ def move(distance: float) -> None:
         else:
             RIGHT_MOTOR.set_dps(-DPS)
             LEFT_MOTOR.set_dps(-DPS)
-
-        while True:
-            # Check remaining distance
-            right_remaining = fabs(right_target - RIGHT_MOTOR.get_position())
-            left_remaining = fabs(left_target - LEFT_MOTOR.get_position())
-
-            if right_remaining <= MAX_DELTA or left_remaining <= MAX_DELTA:
-                break
-
-            sleep(POLL)
+        
+        sleep(move_time)
     finally:
         RIGHT_MOTOR.set_dps(0)
         LEFT_MOTOR.set_dps(0)
@@ -96,8 +85,7 @@ def turn(degrees: int) -> None:
     # Compute encoder degrees
     arc_length = degrees / 360 * TURN_CIRCUMFERENCE
     encoder_degrees = (arc_length / WHEEL_CIRCUMFERENCE) * 360
-    right_target = RIGHT_MOTOR.get_position() - encoder_degrees
-    left_target = LEFT_MOTOR.get_position() + encoder_degrees
+    turn_time = fabs(encoder_degrees / DPS)
 
     try:
         # Set motors to move
@@ -108,15 +96,7 @@ def turn(degrees: int) -> None:
             RIGHT_MOTOR.set_dps(DPS)
             LEFT_MOTOR.set_dps(-DPS)
 
-        while True:
-            # Check remaining distance
-            right_remaining = fabs(right_target - RIGHT_MOTOR.get_position())
-            left_remaining = fabs(left_target - LEFT_MOTOR.get_position())
-
-            if right_remaining <= MAX_DELTA or left_remaining <= MAX_DELTA:
-                break
-
-            sleep(POLL)
+        sleep(turn_time)
     finally:
         RIGHT_MOTOR.set_dps(0)
         LEFT_MOTOR.set_dps(0)

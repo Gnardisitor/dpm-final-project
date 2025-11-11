@@ -9,8 +9,8 @@ from utils.brick import EV3ColorSensor, TouchSensor, wait_ready_sensors
 FILENAME = "colors.csv"
 COLORS = {}
 
-TOUCH_SENSOR = TouchSensor(1)
-COLOR_SENSOR = EV3ColorSensor(2)
+TOUCH_SENSOR = TouchSensor(3)
+COLOR_SENSOR = EV3ColorSensor(4)
 
 print("Sensors waiting")
 wait_ready_sensors()
