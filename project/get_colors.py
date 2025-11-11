@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import csv
 from math import sqrt
 from time import sleep

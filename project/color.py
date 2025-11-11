@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import csv
 from math import sqrt
 from time import sleep
@@ -30,7 +32,7 @@ def get_color() -> str:
     Returns
     -------
     str
-        Name of the closest color, unknown if no valid color is detected.
+        Name of the closest color, returns "unknown" if no valid color is detected.
     """
 
     # Read color and normalize
