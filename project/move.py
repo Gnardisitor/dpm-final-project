@@ -223,40 +223,14 @@ def move_to_simple(x: int, y: int) -> None:
     COORDINATE = (x, y)
 
 
-def follow_line(distance: float) -> None:
-    """
-    Moves the robot forward by a certain distance while staying on the black line.
-
-    Parameters
-    ----------
-    distance : float
-        The distance to move in centimeters. Positive values move forward, and negative values move backward.
-    """
-
+def follow_line() -> None:
     MAX_TURN_TIME = 0.5
 
-    # Check for invalid distance
-    if fabs(distance) < 1e-6:
-        return
-
-    # Compute encoder degrees
-    encoder_degrees = (distance / WHEEL_CIRCUMFERENCE) * 360
-    right_target = RIGHT_MOTOR.get_position() + encoder_degrees
-    left_target = LEFT_MOTOR.get_position() + encoder_degrees
-
     try:
-        # Set motors to move
-        if distance > 0:
-            RIGHT_MOTOR.set_dps(DPS)
-            LEFT_MOTOR.set_dps(DPS)
-        else:
-            RIGHT_MOTOR.set_dps(-DPS)
-            LEFT_MOTOR.set_dps(-DPS)
+        RIGHT_MOTOR.set_dps(DPS)
+        LEFT_MOTOR.set_dps(DPS)
 
         while True:
-            # Check remaining distance
-            right_remaining = fabs(right_target - RIGHT_MOTOR.get_position())
-            left_remaining = fabs(left_target - LEFT_MOTOR.get_position())
 
             # Check if on black line
             if get_color() != "black":
@@ -285,24 +259,9 @@ def follow_line(distance: float) -> None:
                 RIGHT_MOTOR.set_dps(0)
                 LEFT_MOTOR.set_dps(0)
 
-                # Set new encoder targets based on current position
-                if distance > 0:
-                    right_target = RIGHT_MOTOR.get_position() + right_remaining
-                    left_target = LEFT_MOTOR.get_position() + left_remaining
-                else:
-                    right_target = RIGHT_MOTOR.get_position() - right_remaining
-                    left_target = LEFT_MOTOR.get_position() - left_remaining
-
                 # Continue moving forward
-                if distance > 0:
-                    RIGHT_MOTOR.set_dps(DPS)
-                    LEFT_MOTOR.set_dps(DPS)
-                else:
-                    RIGHT_MOTOR.set_dps(-DPS)
-                    LEFT_MOTOR.set_dps(-DPS)
-
-            if right_remaining <= MAX_DELTA or left_remaining <= MAX_DELTA:
-                break
+                RIGHT_MOTOR.set_dps(DPS)
+                LEFT_MOTOR.set_dps(DPS)
 
             sleep(POLL)
     finally:
@@ -468,9 +427,22 @@ def main_move() -> None:
     sleep(1)
     turn(90)
 
+def move_straight(dps):
+        RIGHT_MOTOR.set_dps(dps)
+        LEFT_MOTOR.set_dps(dps)
+
 
 if __name__ == "__main__":
-    move(TILE_SIZE)
+    while True:
+        print(f"{get_color()}")
+        if get_color() == "black":
+            move_straight(540)
+        elif get_color() == "unknown":
+            continue
+        else:
+            move_straight(0)
+        sleep(0.1)
+    
     # # Create process for movement
     # move_process = Process(target=main_move)
     # move_process.start()
