@@ -153,7 +153,7 @@ def save() -> None:
     with open(COLORS_FILENAME, mode="w", newline="") as file:
         for name, color in avg_colors.items():
             file.write(f"{name},{color[0]},{color[1]},{color[2]}\n")
-            file.close()
+        file.close()
 
     # Average ambient values
     avg_ambients = {}
@@ -165,11 +165,9 @@ def save() -> None:
 
     # Save to CSV
     with open(AMBIENTS_FILENAME, mode="w", newline="") as file:
-        for name, ambient in AMBIENTS.items():
+        for name, ambient in avg_ambients.items():
             file.write(f"{name},{ambient}\n")
-            file.close()
-
-    exit()
+        file.close()
 
 
 if __name__ == "__main__":

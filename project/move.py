@@ -1,4 +1,4 @@
-from math import fabs, pi
+from math import isclose, pi
 from multiprocessing import Process
 from time import sleep
 
@@ -18,19 +18,48 @@ COORDINATE = (1, 1)
 ORIENTATION = 0  # Horizontal facing right in degrees
 
 # Measured values
-WHEEL_DIAMETER = 4.3
-TURN_DIAMETER = 15.5
-TILE_SIZE = 25.0
+WHEEL_DIAMETER = 4.2
+TURN_DIAMETER = 16.5
+TILE_SIZE = 25
 
 # Computed values
-WHEEL_CIRCUMFERENCE = WHEEL_DIAMETER * pi
-TURN_CIRCUMFERENCE = TURN_DIAMETER * pi
+DISTANCE_TO_DEGREE = 360 / (pi * WHEEL_DIAMETER)
+DEGREE_TO_ROTATION = TURN_DIAMETER / WHEEL_DIAMETER
 
 # Values for functions
 MAX_DELTA = 1
 DPS = 540
+POWER = DPS / 1250 * 100
 POLL = 0.01
-OVERSHOOT = 0.105
+
+
+def initiate() -> None:
+    """
+    Initiates the motors.
+    """
+
+    try:
+        # Reset encoders and set max speed and power
+        RIGHT_MOTOR.reset_encoder()
+        LEFT_MOTOR.reset_encoder()
+        RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
+        LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
+    except BaseException:
+        pass
+
+
+def wait() -> None:
+    """
+    Waits until both motors have stopped moving.
+    """
+
+    # Wait until the motor start moving
+    while isclose(RIGHT_MOTOR.get_speed(), 0):
+        sleep(POLL)
+
+    # Wait until the motor stop moving
+    while not isclose(RIGHT_MOTOR.get_speed(), 0):
+        sleep(POLL)
 
 
 def forward() -> None:
@@ -89,12 +118,11 @@ def move(distance: float) -> None:
     """
 
     # Check for invalid distance
-    if fabs(distance) < 1e-6:
+    if isclose(distance, 0):
         return
 
     # Compute encoder degrees
-    encoder_degrees = (distance / WHEEL_CIRCUMFERENCE) * 360
-    move_time = fabs(encoder_degrees / DPS)
+    encoder_degrees = int(distance * DISTANCE_TO_DEGREE)
 
     try:
         # Set motors to move
@@ -103,7 +131,11 @@ def move(distance: float) -> None:
         else:
             backward()
 
-        sleep(move_time)
+        RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
+        LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
+        RIGHT_MOTOR.set_position_relative(encoder_degrees)
+        LEFT_MOTOR.set_position_relative(encoder_degrees)
+        wait()
     finally:
         stop()
 
@@ -123,9 +155,7 @@ def turn(degrees: int) -> None:
         return
 
     # Compute encoder degrees
-    arc_length = degrees / 360 * TURN_CIRCUMFERENCE
-    encoder_degrees = (arc_length / WHEEL_CIRCUMFERENCE) * 360
-    turn_time = fabs(encoder_degrees / DPS)
+    encoder_degrees = int(degrees * DEGREE_TO_ROTATION)
 
     try:
         # Set motors to move
@@ -134,7 +164,11 @@ def turn(degrees: int) -> None:
         else:
             left()
 
-        sleep(turn_time - OVERSHOOT)
+        RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
+        LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
+        RIGHT_MOTOR.set_position_relative(-encoder_degrees)
+        LEFT_MOTOR.set_position_relative(encoder_degrees)
+        wait()
     finally:
         stop()
 
@@ -164,7 +198,7 @@ def goto(x: int, y: int) -> None:
         return
 
     # Compute delta
-    delta = (COORDINATE[0] - x, COORDINATE[1] - y)
+    delta = (x - COORDINATE[0], y - COORDINATE[1])
 
     # Check for valid orientation
     if ORIENTATION % 90 != 0:
@@ -256,133 +290,6 @@ def goto(x: int, y: int) -> None:
     COORDINATE = (x, y)
 
 
-def follow_line(distance: float) -> None:
-    """
-    Moves the robot forward by a certain distance while staying on the black line.
-
-    Parameters
-    ----------
-    distance : float
-        The distance to move in centimeters. Positive values move forward, and negative values move backward.
-    """
-
-    pass
-
-
-def turn_to_line(direction: str) -> None:
-    """
-    Turns the robot in the specified direction until it reaches the black line.
-
-    Parameters
-    ----------
-    direction : str
-        Wanted direction to turn, either "left" or "right".
-    """
-
-    pass
-
-
-def follow(x: int, y: int) -> None:
-    """
-    Moves the robot to the specific tile in the coordinate system by following the black path lines.
-
-    Parameters
-    ----------
-    x : int
-        The x-coordinate to move to.
-    y : int
-        The y-coordinate to move to.
-    """
-
-    global COORDINATE
-    global ORIENTATION
-
-    # Check for valid coordinates
-    if x < 1 or y < 1:
-        print("Cannot have negative coordinates")
-        return
-
-    if x > 5 or y > 5:
-        print("Coordinates exceed grid size")
-        return
-
-    # Compute delta
-    delta = (COORDINATE[0] - x, COORDINATE[1] - y)
-
-    # Check for valid orientation
-    if ORIENTATION % 90 != 0:
-        print("Orientation is not aligned to cardinal directions")
-        return
-
-    # If facing right
-    if ORIENTATION == 0:
-        # Move in x direction
-        follow_line(delta[0] * TILE_SIZE)
-
-        # Turn to face y direction
-        if delta[1] > 0:
-            turn_to_line("left")
-            ORIENTATION += 90
-        elif delta[1] < 0:
-            turn_to_line("right")
-            ORIENTATION -= 90
-
-        # Move in y direction
-        follow_line(abs(delta[1]) * TILE_SIZE)
-
-    # If facing up
-    elif ORIENTATION == 90:
-        # Move in y direction
-        follow_line(delta[1] * TILE_SIZE)
-
-        # Turn to face x direction
-        if delta[0] > 0:
-            turn_to_line("right")
-            ORIENTATION -= 90
-        elif delta[0] < 0:
-            turn_to_line("left")
-            ORIENTATION += 90
-
-        # Move in x direction
-        follow_line(abs(delta[0]) * TILE_SIZE)
-
-    # If facing left
-    elif ORIENTATION == 180:
-        # Move in x direction
-        follow_line(-delta[0] * TILE_SIZE)
-
-        # Turn to face y direction
-        if delta[1] > 0:
-            turn_to_line("right")
-            ORIENTATION -= 90
-        elif delta[1] < 0:
-            turn_to_line("left")
-            ORIENTATION += 90
-
-        # Move in y direction
-        follow_line(abs(delta[1]) * TILE_SIZE)
-
-    # If facing down
-    elif ORIENTATION == 270:
-        # Move in y direction
-        follow_line(-delta[1] * TILE_SIZE)
-
-        # Turn to face x direction
-        if delta[0] > 0:
-            turn_to_line("left")
-            ORIENTATION += 90
-        elif delta[0] < 0:
-            turn_to_line("right")
-            ORIENTATION -= 90
-
-        # Move in x direction
-        follow_line(abs(delta[0]) * TILE_SIZE)
-
-    # Normalize orientation
-    ORIENTATION = ORIENTATION % 360
-    COORDINATE = (x, y)
-
-
 def interrupt() -> bool:
     """
     Checks whether or not the main function is being interrupted by the emergency stop.
@@ -401,8 +308,8 @@ def main_move() -> None:
     This is the main function of the code that is ran by the process. Add movement here.
     """
 
-    # Goto tile (5, 3) from (1, 1)
-    goto(5, 3)
+    initiate()
+    goto(4, 2)
 
 
 if __name__ == "__main__":
@@ -415,6 +322,8 @@ if __name__ == "__main__":
     while move_process.is_alive() and not interrupt():
         sleep(POLL)
 
+    stop()
+    print("Movement process stopping")
     move_process.terminate()
     move_process.join()
     print("Movement process ended")

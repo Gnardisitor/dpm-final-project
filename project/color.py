@@ -132,7 +132,7 @@ def test() -> None:
         while True:
             color_name = get_color()
             print(color_name)
-            sleep(0.5)
+            sleep(0.2)
     except BaseException:
         pass
 
