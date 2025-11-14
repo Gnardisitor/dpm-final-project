@@ -1,12 +1,11 @@
-#!/usr/bin/env python3
-
 import csv
 from math import sqrt
 from time import sleep
 
 from utils.brick import EV3ColorSensor, wait_ready_sensors
 
-COLORS = {"unknown": [0.0, 0.0, 0.0]}
+COLORS = {}
+AMBIENTS = {}
 
 # Load colors from CSV file into the dictionary
 with open("colors.csv", "r") as file:
@@ -17,6 +16,14 @@ with open("colors.csv", "r") as file:
         g = float(row[2])
         b = float(row[3])
         COLORS[name] = [r, g, b]
+
+# Load ambients from CSV file into the dictionary
+with open("ambients.csv", "r") as file:
+    reader = csv.reader(file)
+    for row in reader:
+        name = row[0]
+        ambient = float(row[1])
+        AMBIENTS[name] = ambient
 
 COLOR = EV3ColorSensor(4)
 
@@ -52,7 +59,7 @@ def get_color() -> str:
 
     # Find closest color
     closest_name = ""
-    closest_dist = 1
+    closest_dist = float("inf")
     for name, ref_color in COLORS.items():
         # Get euclidean distance
         dist_list = [
@@ -70,6 +77,49 @@ def get_color() -> str:
             closest_name = name
 
     return closest_name
+
+
+def get_ambient() -> str:
+    """
+    Get the closest ambient to the current reading
+
+    Returns
+    -------
+    str
+        Name of the closest ambient, returns "unknown" if no valid ambient is detected.
+    """
+
+    # Read ambient
+    ambient = COLOR.get_ambient()
+
+    # Check for existence of ambient
+    if ambient is None:
+        return "unknown"
+
+    # Find closest ambient
+    closest_name = ""
+    closest_dist = float("inf")
+    for name, ref_ambient in AMBIENTS.items():
+        # Get absolute distance
+        dist = abs(ambient - ref_ambient)
+        if dist < closest_dist:
+            closest_dist = dist
+            closest_name = name
+
+    return closest_name
+
+
+def is_black() -> bool:
+    """
+    Check if the current color reading is black.
+
+    Returns
+    -------
+    bool
+        True if the current color is black, False otherwise.
+    """
+
+    return get_ambient() == "black"
 
 
 # Simple test loop

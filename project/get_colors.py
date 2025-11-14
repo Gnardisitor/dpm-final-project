@@ -1,25 +1,34 @@
-#!/usr/bin/env python3
-
-import csv
 from math import sqrt
 from time import sleep
 
 from utils.brick import EV3ColorSensor, TouchSensor, wait_ready_sensors
 
-FILENAME = "colors.csv"
+COLORS_FILENAME = "colors.csv"
 COLORS = {}
+
+AMBIENTS_FILENAME = "ambients.csv"
+AMBIENTS = {}
 
 TOUCH_SENSOR = TouchSensor(3)
 COLOR_SENSOR = EV3ColorSensor(4)
+
+CURRENT_NAME = "unknown"
+CURRENT_MODE = "color"
+POLL = 0.01
 
 print("Sensors waiting")
 wait_ready_sensors()
 print("Sensors ready")
 
 
-def get_color():
+def get_color(color_name: str) -> None:
     """
     Adds to the dictionary the currently detected color, can sum multiple samples per color.
+
+    Parameters
+    ----------
+    color_name : str
+        The name of the color to save.
     """
 
     # Get normalized RGB vector from color sensor
@@ -39,10 +48,6 @@ def get_color():
 
     color = [color[0] / dist, color[1] / dist, color[2] / dist]
     print(f"Current RGB vector: {color}.")
-
-    # Get name of color from user
-    color_name = input("Enter the name of this color: ")
-    color_name = color_name.strip().lower()
     print(f"Saving {color_name} with RGB vector: {color}.")
 
     # Check if color exists, if so average it
@@ -60,32 +65,104 @@ def get_color():
         COLORS[color_name] = [color[0], color[1], color[2], 1]
 
 
-def test():
+def get_ambient(ambient_name: str) -> None:
+    """
+    Adds to the dictionary the currently detected ambient value, can sum multiple samples per ambient.
+
+    Parameters
+    ----------
+    ambient_name : str
+        The name of the ambient to save.
+    """
+
+    # Get ambient value from color sensor
+    ambient = COLOR_SENSOR.get_ambient()
+    print(f"Current ambient value: {ambient}.")
+    print(f"Saving {ambient_name} with ambient value: {ambient}.")
+
+    # Check if ambient exists, if so average it
+    if ambient_name in AMBIENTS:
+        print(f"Ambient '{ambient_name}' already exists. Doing average.")
+        existing_ambient = AMBIENTS[ambient_name]
+        sample_count = existing_ambient[1]
+        AMBIENTS[ambient_name] = [
+            (existing_ambient[0] + ambient),
+            (sample_count + 1),
+        ]
+    else:
+        AMBIENTS[ambient_name] = [ambient, 1]
+
+
+def test() -> None:
     """
     Simple loop to gather multiple samples and then save the results into a CSV file.
     """
+
+    global CURRENT_NAME
+    global CURRENT_MODE
 
     try:
         while True:
             # Check if touch sensor is pressed
             if TOUCH_SENSOR.is_pressed():
-                get_color()
+                if CURRENT_MODE == "color":
+                    get_color(CURRENT_NAME)
+                else:
+                    get_ambient(CURRENT_NAME)
 
-            sleep(0.5)
+            sleep(POLL)
     except BaseException:
-        rows = []
+        command = input("Command: ")
+        command = command.strip().lower()
+
+        if command == "exit":
+            save()
+        elif command == "color":
+            CURRENT_MODE = "color"
+            print("Switched to color mode.")
+        elif command == "ambient":
+            CURRENT_MODE = "ambient"
+            print("Switched to ambient mode.")
+        else:
+            CURRENT_NAME = command
+
+        test()
+
+
+def save() -> None:
+    """
+    Save the gathered colors and ambients into CSV files.
+    """
+
+    # Average RGB values
+    for name, color in COLORS.items():
+        avg_r = color[0] / color[3]
+        avg_g = color[1] / color[3]
+        avg_b = color[2] / color[3]
+
+        # Save averages
+        COLORS[color] = [avg_r, avg_g, avg_b]
+
+    # Save to CSV
+    with open(COLORS_FILENAME, mode="w", newline="") as file:
         for name, color in COLORS.items():
-            avg_r = color[0] / color[3]
-            avg_g = color[1] / color[3]
-            avg_b = color[2] / color[3]
+            file.write(f"{name},{color[0]},{color[1]},{color[2]}\n")
+            file.close()
 
-            print(f"Saving {name}: r={avg_r}, g={avg_g}, b={avg_b}.")
-            rows.append({"name": name, "r": avg_r, "g": avg_g, "b": avg_b})
+    # Average ambient values
+    for name, ambient in AMBIENTS.items():
+        avg_amb = ambient[0] / ambient[1]
 
-        # Save to CSV (removed writing the header for easier parsing)
-        with open(FILENAME, mode="w", newline="") as file:
-            writer = csv.DictWriter(file, fieldnames=["name", "r", "g", "b"])
-            writer.writerows(rows)
+        # Save averages
+        AMBIENTS[color] = avg_amb
+
+    # Save to CSV
+    with open(AMBIENTS_FILENAME, mode="w", newline="") as file:
+        for name, ambient in AMBIENTS.items():
+            file.write(f"{name},{ambient}\n")
+            file.close()
+
+    exit()
 
 
 if __name__ == "__main__":

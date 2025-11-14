@@ -1,10 +1,7 @@
-#!/usr/bin/env python3
-
 from math import fabs, pi
 from multiprocessing import Process
 from time import sleep
 
-from color import get_color
 from utils.brick import Motor, TouchSensor, wait_ready_sensors
 
 # Initialize motors and sensors
@@ -35,6 +32,51 @@ DPS = 540
 POLL = 0.01
 
 
+def forward() -> None:
+    """
+    Moves the robot forward indefinitely.
+    """
+
+    RIGHT_MOTOR.set_dps(DPS)
+    LEFT_MOTOR.set_dps(DPS)
+
+
+def backward() -> None:
+    """
+    Moves the robot backward indefinitely.
+    """
+
+    RIGHT_MOTOR.set_dps(-DPS)
+    LEFT_MOTOR.set_dps(-DPS)
+
+
+def left() -> None:
+    """
+    Turns the robot left indefinitely.
+    """
+
+    RIGHT_MOTOR.set_dps(DPS)
+    LEFT_MOTOR.set_dps(-DPS)
+
+
+def right() -> None:
+    """
+    Turns the robot right indefinitely.
+    """
+
+    RIGHT_MOTOR.set_dps(-DPS)
+    LEFT_MOTOR.set_dps(DPS)
+
+
+def stop() -> None:
+    """
+    Stops the robot's movement.
+    """
+
+    RIGHT_MOTOR.set_dps(0)
+    LEFT_MOTOR.set_dps(0)
+
+
 def move(distance: float) -> None:
     """
     Moves the robot forward by a certain distance.
@@ -56,16 +98,13 @@ def move(distance: float) -> None:
     try:
         # Set motors to move
         if distance > 0:
-            RIGHT_MOTOR.set_dps(DPS)
-            LEFT_MOTOR.set_dps(DPS)
+            forward()
         else:
-            RIGHT_MOTOR.set_dps(-DPS)
-            LEFT_MOTOR.set_dps(-DPS)
-        
+            backward()
+
         sleep(move_time)
     finally:
-        RIGHT_MOTOR.set_dps(0)
-        LEFT_MOTOR.set_dps(0)
+        stop()
 
 
 def turn(degrees: int) -> None:
@@ -90,19 +129,16 @@ def turn(degrees: int) -> None:
     try:
         # Set motors to move
         if degrees > 0:
-            RIGHT_MOTOR.set_dps(-DPS)
-            LEFT_MOTOR.set_dps(DPS)
+            right()
         else:
-            RIGHT_MOTOR.set_dps(DPS)
-            LEFT_MOTOR.set_dps(-DPS)
+            left()
 
         sleep(turn_time)
     finally:
-        RIGHT_MOTOR.set_dps(0)
-        LEFT_MOTOR.set_dps(0)
+        stop()
 
 
-def move_to_simple(x: int, y: int) -> None:
+def goto(x: int, y: int) -> None:
     """
     Moves the robot to the specific tile in the coordinate system using simple brute force movement.
 
@@ -139,6 +175,8 @@ def move_to_simple(x: int, y: int) -> None:
         # Move in x direction
         move(delta[0] * TILE_SIZE)
 
+        sleep(1)
+
         # Turn to face y direction
         if delta[1] > 0:
             turn(-90)
@@ -146,6 +184,8 @@ def move_to_simple(x: int, y: int) -> None:
         elif delta[1] < 0:
             turn(90)
             ORIENTATION -= 90
+
+        sleep(1)
 
         # Move in y direction
         move(abs(delta[1]) * TILE_SIZE)
@@ -155,6 +195,8 @@ def move_to_simple(x: int, y: int) -> None:
         # Move in y direction
         move(delta[1] * TILE_SIZE)
 
+        sleep(1)
+
         # Turn to face x direction
         if delta[0] > 0:
             turn(90)
@@ -162,6 +204,8 @@ def move_to_simple(x: int, y: int) -> None:
         elif delta[0] < 0:
             turn(-90)
             ORIENTATION += 90
+
+        sleep(1)
 
         # Move in x direction
         move(abs(delta[0]) * TILE_SIZE)
@@ -171,6 +215,8 @@ def move_to_simple(x: int, y: int) -> None:
         # Move in x direction
         move(-delta[0] * TILE_SIZE)
 
+        sleep(1)
+
         # Turn to face y direction
         if delta[1] > 0:
             turn(90)
@@ -178,6 +224,8 @@ def move_to_simple(x: int, y: int) -> None:
         elif delta[1] < 0:
             turn(-90)
             ORIENTATION += 90
+
+        sleep(1)
 
         # Move in y direction
         move(abs(delta[1]) * TILE_SIZE)
@@ -187,6 +235,8 @@ def move_to_simple(x: int, y: int) -> None:
         # Move in y direction
         move(-delta[1] * TILE_SIZE)
 
+        sleep(1)
+
         # Turn to face x direction
         if delta[0] > 0:
             turn(-90)
@@ -194,6 +244,8 @@ def move_to_simple(x: int, y: int) -> None:
         elif delta[0] < 0:
             turn(90)
             ORIENTATION -= 90
+
+        sleep(1)
 
         # Move in x direction
         move(abs(delta[0]) * TILE_SIZE)
@@ -213,81 +265,7 @@ def follow_line(distance: float) -> None:
         The distance to move in centimeters. Positive values move forward, and negative values move backward.
     """
 
-    MAX_TURN_TIME = 0.5
-
-    # Check for invalid distance
-    if fabs(distance) < 1e-6:
-        return
-
-    # Compute encoder degrees
-    encoder_degrees = (distance / WHEEL_CIRCUMFERENCE) * 360
-    right_target = RIGHT_MOTOR.get_position() + encoder_degrees
-    left_target = LEFT_MOTOR.get_position() + encoder_degrees
-
-    try:
-        # Set motors to move
-        if distance > 0:
-            RIGHT_MOTOR.set_dps(DPS)
-            LEFT_MOTOR.set_dps(DPS)
-        else:
-            RIGHT_MOTOR.set_dps(-DPS)
-            LEFT_MOTOR.set_dps(-DPS)
-
-        while True:
-            # Check remaining distance
-            right_remaining = fabs(right_target - RIGHT_MOTOR.get_position())
-            left_remaining = fabs(left_target - LEFT_MOTOR.get_position())
-
-            # Check if on black line
-            if get_color() != "black":
-                # Stop motors
-                RIGHT_MOTOR.set_dps(0)
-                LEFT_MOTOR.set_dps(0)
-
-                # Search for the black line
-                time = 0
-                while get_color() != "black" and time < MAX_TURN_TIME * 3:
-                    # Start by turning right
-                    if time < MAX_TURN_TIME:
-                        RIGHT_MOTOR.set_dps(-DPS / 2)
-                        LEFT_MOTOR.set_dps(DPS / 2)
-
-                    # Then turn left (twice as long to go back to other side)
-                    else:
-                        RIGHT_MOTOR.set_dps(DPS / 2)
-                        LEFT_MOTOR.set_dps(-DPS / 2)
-
-                    # Keep track of time
-                    sleep(POLL)
-                    time += POLL
-
-                # Stop motors
-                RIGHT_MOTOR.set_dps(0)
-                LEFT_MOTOR.set_dps(0)
-
-                # Set new encoder targets based on current position
-                if distance > 0:
-                    right_target = RIGHT_MOTOR.get_position() + right_remaining
-                    left_target = LEFT_MOTOR.get_position() + left_remaining
-                else:
-                    right_target = RIGHT_MOTOR.get_position() - right_remaining
-                    left_target = LEFT_MOTOR.get_position() - left_remaining
-
-                # Continue moving forward
-                if distance > 0:
-                    RIGHT_MOTOR.set_dps(DPS)
-                    LEFT_MOTOR.set_dps(DPS)
-                else:
-                    RIGHT_MOTOR.set_dps(-DPS)
-                    LEFT_MOTOR.set_dps(-DPS)
-
-            if right_remaining <= MAX_DELTA or left_remaining <= MAX_DELTA:
-                break
-
-            sleep(POLL)
-    finally:
-        RIGHT_MOTOR.set_dps(0)
-        LEFT_MOTOR.set_dps(0)
+    pass
 
 
 def turn_to_line(direction: str) -> None:
@@ -300,31 +278,10 @@ def turn_to_line(direction: str) -> None:
         Wanted direction to turn, either "left" or "right".
     """
 
-    # Check for valid direction
-    if direction not in ["left", "right"]:
-        print("Invalid direction to turn")
-        return
-
-    try:
-        # Set motors to move
-        if direction == "right":
-            RIGHT_MOTOR.set_dps(-DPS)
-            LEFT_MOTOR.set_dps(DPS)
-        else:
-            RIGHT_MOTOR.set_dps(DPS)
-            LEFT_MOTOR.set_dps(-DPS)
-
-        sleep(0.25)  # Initial turn to avoid forward black line
-
-        # Turn until black line is detected
-        while get_color() != "black":
-            sleep(POLL)
-    finally:
-        RIGHT_MOTOR.set_dps(0)
-        LEFT_MOTOR.set_dps(0)
+    pass
 
 
-def move_to_complex(x: int, y: int) -> None:
+def follow(x: int, y: int) -> None:
     """
     Moves the robot to the specific tile in the coordinate system by following the black path lines.
 
@@ -444,9 +401,7 @@ def main_move() -> None:
     """
 
     # Move forward 10 cm then turn 90 degrees to the right
-    move(10)
-    sleep(1)
-    turn(90)
+    goto(5, 3)
 
 
 if __name__ == "__main__":
