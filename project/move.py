@@ -30,6 +30,7 @@ TURN_CIRCUMFERENCE = TURN_DIAMETER * pi
 MAX_DELTA = 1
 DPS = 540
 POLL = 0.01
+OVERSHOOT = 0.105
 
 
 def forward() -> None:
@@ -133,7 +134,7 @@ def turn(degrees: int) -> None:
         else:
             left()
 
-        sleep(turn_time)
+        sleep(turn_time - OVERSHOOT)
     finally:
         stop()
 
@@ -400,7 +401,7 @@ def main_move() -> None:
     This is the main function of the code that is ran by the process. Add movement here.
     """
 
-    # Move forward 10 cm then turn 90 degrees to the right
+    # Goto tile (5, 3) from (1, 1)
     goto(5, 3)
 
 
