@@ -111,19 +111,24 @@ def test() -> None:
                     get_ambient(CURRENT_NAME)
 
             sleep(POLL)
-    except BaseException:
-        command = input("Command: ")
-        command = command.strip().lower()
+    except KeyboardInterrupt:
+        try:
+            command = input("Command: ")
+            command = command.strip().lower()
+        except KeyboardInterrupt:
+            print("Command error. Restarting test loop.")
+            test()
 
         if command == "exit":
             save()
+            return
         elif command == "color":
             CURRENT_MODE = "color"
             print("Switched to color mode.")
         elif command == "ambient":
             CURRENT_MODE = "ambient"
             print("Switched to ambient mode.")
-        else:
+        elif command != "":
             CURRENT_NAME = command
 
         test()
@@ -135,26 +140,28 @@ def save() -> None:
     """
 
     # Average RGB values
+    avg_colors = {}
     for name, color in COLORS.items():
         avg_r = color[0] / color[3]
         avg_g = color[1] / color[3]
         avg_b = color[2] / color[3]
 
         # Save averages
-        COLORS[color] = [avg_r, avg_g, avg_b]
+        avg_colors[name] = [avg_r, avg_g, avg_b]
 
     # Save to CSV
     with open(COLORS_FILENAME, mode="w", newline="") as file:
-        for name, color in COLORS.items():
+        for name, color in avg_colors.items():
             file.write(f"{name},{color[0]},{color[1]},{color[2]}\n")
             file.close()
 
     # Average ambient values
+    avg_ambients = {}
     for name, ambient in AMBIENTS.items():
         avg_amb = ambient[0] / ambient[1]
 
         # Save averages
-        AMBIENTS[color] = avg_amb
+        avg_ambients[name] = avg_amb
 
     # Save to CSV
     with open(AMBIENTS_FILENAME, mode="w", newline="") as file:
