@@ -2,6 +2,7 @@ from math import isclose, pi
 from multiprocessing import Process
 from time import sleep
 
+from color import get_color
 from utils.brick import Motor, TouchSensor, wait_ready_sensors
 
 # Initialize motors and sensors
@@ -16,10 +17,11 @@ print("Sensors ready")
 # Coordinate system values (tiles go from 1 to 5)
 COORDINATE = (1, 1)
 ORIENTATION = 0  # Horizontal facing right in degrees
+AT_OFFICE = False
 
 # Measured values
 WHEEL_DIAMETER = 4.2
-TURN_DIAMETER = 16.5
+TURN_DIAMETER = 17.0
 TILE_SIZE = 25
 
 # Computed values
@@ -53,13 +55,22 @@ def wait() -> None:
     Waits until both motors have stopped moving.
     """
 
+    global AT_OFFICE
+
     # Wait until the motor start moving
     while isclose(RIGHT_MOTOR.get_speed(), 0):
         sleep(POLL)
 
     # Wait until the motor stop moving
+    set_flag = False
     while not isclose(RIGHT_MOTOR.get_speed(), 0):
+        if get_color() == "orange" and not set_flag:
+            AT_OFFICE = not AT_OFFICE
+            set_flag = True
         sleep(POLL)
+
+    if AT_OFFICE:
+        print("The robot is at the door of an office!")
 
 
 def forward() -> None:
@@ -117,8 +128,10 @@ def move(distance: float) -> None:
         The distance to move in centimeters. Positive values move forward, and negative values move backward.
     """
 
+    global AT_OFFICE
+
     # Check for invalid distance
-    if isclose(distance, 0):
+    if isclose(distance, 0) or AT_OFFICE:
         return
 
     # Compute encoder degrees
@@ -129,10 +142,12 @@ def move(distance: float) -> None:
         if distance > 0:
             forward()
         else:
+            # Set limits (makes moving backward properly)
+            RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
+            LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
             backward()
 
-        RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-        LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
+        # Set wanted position
         RIGHT_MOTOR.set_position_relative(encoder_degrees)
         LEFT_MOTOR.set_position_relative(encoder_degrees)
         wait()
@@ -164,8 +179,11 @@ def turn(degrees: int) -> None:
         else:
             left()
 
+        # Set limits (makes turning work properly)
         RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
         LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
+
+        # Set wanted position
         RIGHT_MOTOR.set_position_relative(-encoder_degrees)
         LEFT_MOTOR.set_position_relative(encoder_degrees)
         wait()
@@ -289,6 +307,8 @@ def goto(x: int, y: int) -> None:
     ORIENTATION = ORIENTATION % 360
     COORDINATE = (x, y)
 
+    print(f"At {COORDINATE[0]}, {COORDINATE[1]} rotated {ORIENTATION} degrees.")
+
 
 def interrupt() -> bool:
     """
@@ -308,7 +328,14 @@ def main_move() -> None:
     This is the main function of the code that is ran by the process. Add movement here.
     """
 
+    global ORIENTATION
+
+    # Goto first two offices
     initiate()
+    goto(2, 2)
+    goto(2, 1)
+    turn(90)
+    ORIENTATION = 0
     goto(4, 2)
 
 
