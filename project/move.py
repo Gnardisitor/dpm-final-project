@@ -329,13 +329,18 @@ def main_move() -> None:
     """
 
     global ORIENTATION
+    global AT_OFFICE
 
-    # Goto first two offices
+    # Goto first office
     initiate()
     goto(2, 2)
+
+    # Go back to front of office
     goto(2, 1)
     turn(90)
     ORIENTATION = 0
+
+    # Goto second office
     goto(4, 2)
 
 
