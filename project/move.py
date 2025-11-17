@@ -310,6 +310,58 @@ def goto(x: int, y: int) -> None:
     print(f"At {COORDINATE[0]}, {COORDINATE[1]} rotated {ORIENTATION} degrees.")
 
 
+def sweep(sweep_degrees: int) -> bool:
+    encoder_degrees = int(sweep_degrees * DEGREE_TO_ROTATION)
+
+    # Sweep to the right
+    right()
+    RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
+    LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
+    RIGHT_MOTOR.set_position_relative(-encoder_degrees)
+    LEFT_MOTOR.set_position_relative(encoder_degrees)
+
+    # Wait until the motor start moving
+    while isclose(RIGHT_MOTOR.get_speed(), 0):
+        sleep(POLL)
+
+    # Wait until the motor stop moving or detect a sticker
+    while not isclose(RIGHT_MOTOR.get_speed(), 0):
+        color = get_color()
+        if color in ["red", "green"]:
+            print(f"Detected {color} sticker during sweep.")
+            stop()
+            return True
+        sleep(POLL)
+
+    # Sweep to the left
+    left()
+    RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
+    LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
+    RIGHT_MOTOR.set_position_relative(encoder_degrees)
+    LEFT_MOTOR.set_position_relative(-encoder_degrees)
+
+    # Wait until the motor start moving
+    while isclose(RIGHT_MOTOR.get_speed(), 0):
+        sleep(POLL)
+
+    # Wait until the motor stop moving or detect a sticker
+    while not isclose(RIGHT_MOTOR.get_speed(), 0):
+        color = get_color()
+        if color in ["red", "green"]:
+            print(f"Detected {color} sticker during sweep.")
+            stop()
+            return True
+        sleep(POLL)
+
+    return False
+
+
+def check_red() -> None:
+    # Move forward and sweep
+    move(2)
+    sticker_detected = sweep(30)
+
+
 def interrupt() -> bool:
     """
     Checks whether or not the main function is being interrupted by the emergency stop.
@@ -334,6 +386,10 @@ def main_move() -> None:
     # Goto first office
     initiate()
     goto(2, 2)
+
+    # Check for red sticker (will mess up rest of the code due to different orientation)
+    if AT_OFFICE:
+        check_red()
 
     # Go back to front of office
     goto(2, 1)
