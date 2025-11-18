@@ -37,10 +37,10 @@ POWER = DPS / 1250 * 100
 POLL = 0.01
 
 NOTES = [
-    sound.Sound(duration=0.2, pitch="C5", volume=85),
-    sound.Sound(duration=0.2, pitch="D5", volume=85),
-    sound.Sound(duration=0.2, pitch="E5", volume=85),
-    sound.Sound(duration=0.2, pitch="G5", volume=85),
+    sound.Sound(duration=0.2, pitch="C5", volume=95),
+    sound.Sound(duration=0.2, pitch="D5", volume=95),
+    sound.Sound(duration=0.2, pitch="E5", volume=95),
+    sound.Sound(duration=0.2, pitch="G5", volume=95),
 ]
 
 
@@ -208,43 +208,6 @@ def move(distance: float) -> None:
         stop()
 
 
-def move(distance: float) -> None:
-    """
-    Moves the robot forward by a certain distance.
-
-    Parameters
-    ----------
-    distance : float
-        The distance to move in centimeters. Positive values move forward, and negative values move backward.
-    """
-
-    global AT_OFFICE
-
-    # Check for invalid distance
-    if isclose(distance, 0) or AT_OFFICE:
-        return
-
-    # Compute encoder degrees
-    encoder_degrees = int(distance * DISTANCE_TO_DEGREE)
-
-    try:
-        # Set motors to move
-        if distance > 0:
-            forward()
-        else:
-            # Set limits (makes moving backward properly)
-            RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-            LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
-            backward()
-
-        # Set wanted position
-        RIGHT_MOTOR.set_position_relative(encoder_degrees)
-        LEFT_MOTOR.set_position_relative(encoder_degrees)
-        wait()
-    finally:
-        stop()
-
-
 def move_straight_in_office(distance: float) -> None:
     """
     Moves the robot forward by a certain distance.
@@ -268,8 +231,8 @@ def move_straight_in_office(distance: float) -> None:
             forward()
         else:
             # Set limits (makes moving backward properly)
-            RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-            LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
+           # RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
+           # LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
             backward()
 
         # Set wanted position
@@ -278,6 +241,37 @@ def move_straight_in_office(distance: float) -> None:
         wait_in_office()
     finally:
         stop()
+
+
+def move_back_in_office(distance: float) -> None:
+    """
+    Moves the robot forward by a certain distance.
+
+    Parameters
+    ----------
+    distance : float
+        The distance to move in centimeters. Positive values move forward, and negative values move backward.
+    """
+
+    # Check for invalid distance
+    if isclose(distance, 0):
+        return
+
+    # Compute encoder degrees
+    encoder_degrees = int(distance * DISTANCE_TO_DEGREE)
+
+    RIGHT_MOTOR.set_dps(-DPS)
+    LEFT_MOTOR.set_dps(-DPS)
+
+    RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
+    LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
+
+        # Set wanted position
+    RIGHT_MOTOR.set_position_relative(encoder_degrees)
+    LEFT_MOTOR.set_position_relative(encoder_degrees)
+    wait_in_office()
+    stop()
+
 
 
 def turn(degrees: int) -> None:
@@ -435,76 +429,6 @@ def goto(x: int, y: int) -> None:
     print(f"At {COORDINATE[0]}, {COORDINATE[1]} rotated {ORIENTATION} degrees.")
 
 
-def sweep(sweep_degrees: int) -> bool:
-    encoder_degrees = int(sweep_degrees * DEGREE_TO_ROTATION)
-
-    # Sweep to the right
-    right()
-    RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-    LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
-    RIGHT_MOTOR.set_position_relative(-encoder_degrees)
-    LEFT_MOTOR.set_position_relative(encoder_degrees)
-
-    # Wait until the motor start moving
-    while isclose(RIGHT_MOTOR.get_speed(), 0):
-        sleep(POLL)
-
-    # Wait until the motor stop moving or detect a sticker
-    while not isclose(RIGHT_MOTOR.get_speed(), 0):
-        color = get_color()
-        if color in ["red", "green"]:
-            print(f"Detected {color} sticker during sweep.")
-            stop()
-            return True
-        sleep(POLL)
-
-    # Sweep to the left
-    left()
-    RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-    LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
-    RIGHT_MOTOR.set_position_relative(encoder_degrees)
-    LEFT_MOTOR.set_position_relative(-encoder_degrees)
-
-    # Wait until the motor start moving
-    while isclose(RIGHT_MOTOR.get_speed(), 0):
-        sleep(POLL)
-
-    # Wait until the motor stop moving or detect a sticker
-    while not isclose(RIGHT_MOTOR.get_speed(), 0):
-        color = get_color()
-        if color in ["red", "green"]:
-            print(f"Detected {color} sticker during sweep.")
-            stop()
-            return True
-        sleep(POLL)
-
-    return False
-
-
-def sweep_test(sweep_degrees):
-    encoder_degrees = int(sweep_degrees * DEGREE_TO_ROTATION)
-    sticker = None
-    move(2)
-    right()
-    RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-    LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
-    RIGHT_MOTOR.set_position_relative(-encoder_degrees)
-    LEFT_MOTOR.set_position_relative(encoder_degrees)
-
-    # Wait until the motor start moving
-    while isclose(RIGHT_MOTOR.get_speed(), 0):
-        sleep(POLL)
-
-    # Wait until the motor stop moving or detect a sticker
-    while not isclose(RIGHT_MOTOR.get_speed(), 0):
-        color = get_color()
-        if color in ["red", "green"]:
-            sticker = color
-        sleep(POLL)
-
-    print(f"{sticker}")
-
-
 def check_red(encoder_degrees):
     red_found = False
     right()
@@ -567,6 +491,8 @@ def green_sweep(encoder_degrees: int) -> bool:
     sleep(0.2)
     move_straight_in_office(2)
     right()
+    start_degrees_right = RIGHT_MOTOR.get_position()
+    start_degrees_left = LEFT_MOTOR.get_position()
     RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
     LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
     RIGHT_MOTOR.set_position_relative(-encoder_degrees)
@@ -584,7 +510,11 @@ def green_sweep(encoder_degrees: int) -> bool:
         if color == "green":
             print("Detected green sticker during sweep.")
             stop()
-            return True
+            end_degrees_right = RIGHT_MOTOR.get_position()
+            end_degrees_left = LEFT_MOTOR.get_position()
+            move_back_right = start_degrees_right - end_degrees_right
+            move_back_left = start_degrees_left - end_degrees_left
+            return [True, move_back_right, move_back_left]
         sleep(POLL)
 
     stop()
@@ -608,7 +538,11 @@ def green_sweep(encoder_degrees: int) -> bool:
         if color == "green":
             print("Detected green sticker during sweep.")
             stop()
-            return True
+            end_degrees_right = RIGHT_MOTOR.get_position()
+            end_degrees_left = LEFT_MOTOR.get_position()
+            move_back_right = start_degrees_right - end_degrees_right
+            move_back_left = start_degrees_left - end_degrees_left
+            return [True, move_back_right, move_back_left]
         sleep(POLL)
 
     stop()
@@ -631,12 +565,16 @@ def green_sweep(encoder_degrees: int) -> bool:
         if color == "green":
             print("Detected green sticker during sweep.")
             stop()
-            return True
+            end_degrees_right = RIGHT_MOTOR.get_position()
+            end_degrees_left = LEFT_MOTOR.get_position()
+            move_back_right = start_degrees_right - end_degrees_right
+            move_back_left = start_degrees_left - end_degrees_left
+            return [True, move_back_right, move_back_left]
         sleep(POLL)
 
     stop()
 
-    return False
+    return [False, 0, 0]
 
 
 def check_green(sweep_degrees):
@@ -645,11 +583,12 @@ def check_green(sweep_degrees):
     found_green = False
     while count < 12:
         count += 1
-        found_green = green_sweep(encoder_degrees)
+        found_green_tuple = green_sweep(encoder_degrees)
+        found_green = found_green_tuple[0]
         if found_green:
             break
     print(f"{count}")
-    return found_green
+    return [found_green, found_green_tuple[1], found_green_tuple[2], count]
 
 
 def drop_block():
@@ -660,8 +599,8 @@ def drop_block():
     LEFT_MOTOR.set_position_relative(90)
     wait_in_office()
     stop()
-    CONVEYER_MOTOR.set_dps(-0.4 * DPS)
-    CONVEYER_MOTOR.set_limits(dps=0.4 * DPS, power=POWER)
+    CONVEYER_MOTOR.set_dps(-0.6 * DPS)
+    CONVEYER_MOTOR.set_limits(dps=0.6 * DPS, power=POWER)
     CONVEYER_MOTOR.set_position_relative(180)
     wait_drop()
 
@@ -695,29 +634,43 @@ def main_move() -> None:
     if AT_OFFICE:
         found_red = check_red(30)
         if not found_red:
-            found_green = check_green(40)
+            found_green_tuple = check_green(40)
+            found_green = found_green_tuple[0]
+            move_back_right = found_green_tuple[1]  
+            move_back_left = found_green_tuple[2]
+            count = found_green_tuple[3]
             if found_green:
                 drop_block()
                 play_sound(0)
+                stop()
+                RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
+                LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
+                RIGHT_MOTOR.set_position_relative(move_back_right + 90)
+                LEFT_MOTOR.set_position_relative(move_back_left - 90)
+                wait_in_office()
+                move_back_in_office(-2*count)
                 exit()
 
     # Go back to front of office
-    goto(2, 1)
-    turn(90)
-    ORIENTATION = 0
+    # goto(2, 1)
+    # turn(90)
+    # ORIENTATION = 0
 
     # Goto second office
-    goto(4, 2)
+    # goto(4, 2)
 
-    # Check for red sticker (will mess up rest of the code due to different orientation)
-    if AT_OFFICE:
-        found_red = check_red(30)
-        if not found_red:
-            found_green = check_green(40)
-            if found_green:
-                drop_block()
-                play_sound(0)
-                exit()
+    # # Check for red sticker (will mess up rest of the code due to different orientation)
+    # if AT_OFFICE:
+    #     found_red = check_red(30)
+    #     if not found_red:
+    #         found_green = check_green(40)
+    #         if found_green:
+    #             drop_block()
+    #             play_sound(0)
+    #             RIGHT_MOTOR.set_position_relative(-encoder_degrees)
+    #             LEFT_MOTOR.set_position_relative(encoder_degrees)
+    #             wait()
+    #             exit()
 
 
 if __name__ == "__main__":
