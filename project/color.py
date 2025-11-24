@@ -1,5 +1,5 @@
 import csv
-from math import sqrt
+from math import fabs, sqrt
 from time import sleep
 
 from utils.brick import EV3ColorSensor, wait_ready_sensors
@@ -101,7 +101,7 @@ def get_ambient() -> str:
     closest_dist = float("inf")
     for name, ref_ambient in AMBIENTS.items():
         # Get absolute distance
-        dist = abs(ambient - ref_ambient)
+        dist = fabs(ambient - ref_ambient)
         if dist < closest_dist:
             closest_dist = dist
             closest_name = name
@@ -119,7 +119,11 @@ def is_black() -> bool:
         True if the current color is black, False otherwise.
     """
 
-    return get_ambient() == "black"
+    ambient = COLOR.get_ambient()
+    dist = fabs(ambient - AMBIENTS["black"])
+    error = dist / AMBIENTS["black"]
+
+    return error <= 0.35
 
 
 # Simple test loop
@@ -130,7 +134,7 @@ def test() -> None:
 
     try:
         while True:
-            color_name = get_color()
+            color_name = get_ambient()
             print(color_name)
             sleep(0.2)
     except BaseException:

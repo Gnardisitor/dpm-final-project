@@ -2,16 +2,16 @@ from math import isclose, pi
 from multiprocessing import Process
 from time import sleep
 
-from color import get_color
-from color import is_black
+from color import get_color, is_black
 from utils import sound
-from utils.brick import Motor, TouchSensor, wait_ready_sensors
+from utils.brick import EV3UltrasonicSensor, Motor, TouchSensor, wait_ready_sensors
 
 # Initialize motors and sensors
 STOP = TouchSensor(3)
 RIGHT_MOTOR = Motor("C")
 LEFT_MOTOR = Motor("B")
 CONVEYER_MOTOR = Motor("A")
+ULTRASONIC_SENSOR = EV3UltrasonicSensor(1)
 
 print("Sensors waiting")
 wait_ready_sensors()
@@ -21,6 +21,8 @@ print("Sensors ready")
 COORDINATE = (1, 1)
 ORIENTATION = 0  # Horizontal facing right in degrees
 AT_OFFICE = False
+
+DELIVERIES = 0
 
 # Measured values
 WHEEL_DIAMETER = 4.2
@@ -38,13 +40,11 @@ POWER = DPS / 1250 * 100
 POLL = 0.01
 
 NOTES = [
-    sound.Sound(duration=0.2, pitch="C5", volume=95),
-    sound.Sound(duration=0.2, pitch="D5", volume=95),
-    sound.Sound(duration=0.2, pitch="E5", volume=95),
-    sound.Sound(duration=0.2, pitch="G5", volume=95),
+    sound.Sound(duration=0.5, pitch="C5", volume=95),
+    sound.Sound(duration=0.5, pitch="D5", volume=95),
+    sound.Sound(duration=0.5, pitch="E5", volume=95),
+    sound.Sound(duration=0.5, pitch="G5", volume=95),
 ]
-
-
 
 
 def play_sound(note):
@@ -234,8 +234,8 @@ def move_straight_in_office(distance: float) -> None:
             forward()
         else:
             # Set limits (makes moving backward properly)
-           # RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-           # LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
+            # RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
+            # LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
             backward()
 
         # Set wanted position
@@ -269,11 +269,12 @@ def move_back_in_office(distance: float) -> None:
     RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
     LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
 
-        # Set wanted position
+    # Set wanted position
     RIGHT_MOTOR.set_position_relative(encoder_degrees)
     LEFT_MOTOR.set_position_relative(encoder_degrees)
     wait_in_office()
     stop()
+
 
 def left_motor_only(distance):
     if isclose(distance, 0):
@@ -286,10 +287,11 @@ def left_motor_only(distance):
 
     LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
 
-        # Set wanted position
+    # Set wanted position
     LEFT_MOTOR.set_position_relative(encoder_degrees)
     wait_in_office()
     stop()
+
 
 def right_motor_only(distance):
     if isclose(distance, 0):
@@ -302,11 +304,10 @@ def right_motor_only(distance):
 
     RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
 
-        # Set wanted position
+    # Set wanted position
     RIGHT_MOTOR.set_position_relative(encoder_degrees)
     wait_in_office()
     stop()
-
 
 
 def turn(degrees: int) -> None:
@@ -483,6 +484,7 @@ def check_red(encoder_degrees):
             red_found = True
         sleep(POLL)
 
+    stop()
     # Sweep to the left
     left()
     RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
@@ -501,6 +503,7 @@ def check_red(encoder_degrees):
             red_found = True
         sleep(POLL)
 
+    stop()
     right()
     RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
     LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
@@ -525,6 +528,8 @@ def check_red(encoder_degrees):
 def green_sweep(encoder_degrees: int) -> bool:
     sleep(0.2)
     move_straight_in_office(2)
+    sleep(0.3)
+
     right()
     start_degrees_right = RIGHT_MOTOR.get_position()
     start_degrees_left = LEFT_MOTOR.get_position()
@@ -553,6 +558,7 @@ def green_sweep(encoder_degrees: int) -> bool:
         sleep(POLL)
 
     stop()
+    sleep(0.3)
 
     # Sweep to the left
     left()
@@ -581,6 +587,7 @@ def green_sweep(encoder_degrees: int) -> bool:
         sleep(POLL)
 
     stop()
+    sleep(0.3)
 
     right()
     RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
@@ -608,6 +615,7 @@ def green_sweep(encoder_degrees: int) -> bool:
         sleep(POLL)
 
     stop()
+    sleep(0.3)
 
     return [False, 0, 0]
 
@@ -627,6 +635,9 @@ def check_green(sweep_degrees):
 
 
 def drop_block():
+    global DELIVERIES
+    DELIVERIES += 1
+
     right()
     RIGHT_MOTOR.set_limits(dps=0.20 * DPS, power=POWER)
     LEFT_MOTOR.set_limits(dps=0.20 * DPS, power=POWER)
@@ -639,32 +650,119 @@ def drop_block():
     CONVEYER_MOTOR.set_position_relative(180)
     wait_drop()
 
+
+def black_sweep(encoder_degrees: int) -> bool:
+    right()
+    RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
+    LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
+    RIGHT_MOTOR.set_position_relative(-encoder_degrees)
+    LEFT_MOTOR.set_position_relative(encoder_degrees)
+
+    # Wait until the motor start moving
+    while (isclose(RIGHT_MOTOR.get_speed(), 0)) or (isclose(LEFT_MOTOR.get_speed(), 0)):
+        sleep(POLL)
+
+    # Wait until the motor stop moving or detect a sticker
+    while (not isclose(RIGHT_MOTOR.get_speed(), 0)) or not (
+        isclose(LEFT_MOTOR.get_speed(), 0)
+    ):
+        if is_black():
+            print("Detected black line during sweep.")
+            stop()
+            return True
+        sleep(POLL)
+
+    stop()
+
+    # Sweep to the left
+    left()
+    RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
+    LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
+    RIGHT_MOTOR.set_position_relative(2 * encoder_degrees)
+    LEFT_MOTOR.set_position_relative(-2 * encoder_degrees)
+
+    # Wait until the motor start moving
+    while (isclose(RIGHT_MOTOR.get_speed(), 0)) or (isclose(LEFT_MOTOR.get_speed(), 0)):
+        sleep(POLL)
+
+    # Wait until the motor stop moving or detect a sticker
+    while (not isclose(RIGHT_MOTOR.get_speed(), 0)) or not (
+        isclose(LEFT_MOTOR.get_speed(), 0)
+    ):
+        if is_black():
+            print("Detected black line during sweep.")
+            stop()
+            return True
+        sleep(POLL)
+
+    stop()
+
+    right()
+    RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
+    LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
+    RIGHT_MOTOR.set_position_relative(-encoder_degrees)
+    LEFT_MOTOR.set_position_relative(encoder_degrees)
+
+    # Wait until the motor start moving
+    while (isclose(RIGHT_MOTOR.get_speed(), 0)) or (isclose(LEFT_MOTOR.get_speed(), 0)):
+        sleep(POLL)
+
+    # Wait until the motor stop moving or detect a sticker
+    while (not isclose(RIGHT_MOTOR.get_speed(), 0)) or not (
+        isclose(LEFT_MOTOR.get_speed(), 0)
+    ):
+        if is_black():
+            print("Detected black line during sweep.")
+            stop()
+            return True
+        sleep(POLL)
+
+    stop()
+
+    return False
+
+
+def follow_line(distance: float) -> None:
+    forward()
+    while ULTRASONIC_SENSOR.get_value() > distance:
+        if not is_black() and ULTRASONIC_SENSOR.get_value() > 15.0:
+            stop()
+            sleep(0.1)
+            black = black_sweep(20)
+            if not black:
+                black = black_sweep(45)
+                if not black:
+                    black_sweep(60)
+            sleep(0.1)
+            forward()
+
+        sleep(POLL)
+    stop()
+
+
 def turn_to_line():
     right()
     RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
     LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
-    RIGHT_MOTOR.set_position_relative(-270)
-    LEFT_MOTOR.set_position_relative(270)
+    RIGHT_MOTOR.set_position_relative(-65 * DEGREE_TO_ROTATION)
+    LEFT_MOTOR.set_position_relative(65 * DEGREE_TO_ROTATION)
     wait_in_office()
     right()
     while not is_black():
         sleep(POLL)
     stop()
-    left_motor_only(0.5)
-    stop()
+
 
 def turn_to_line_2():
     left()
     RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
     LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
-    RIGHT_MOTOR.set_position_relative(270)
-    LEFT_MOTOR.set_position_relative(-270)
+    RIGHT_MOTOR.set_position_relative(65 * DEGREE_TO_ROTATION)
+    LEFT_MOTOR.set_position_relative(-65 * DEGREE_TO_ROTATION)
     wait_in_office()
     left()
     while not is_black():
         sleep(POLL)
-    stop()
-    right_motor_only(0.5)
     stop()
 
 
@@ -681,195 +779,118 @@ def interrupt() -> bool:
     return STOP.is_pressed()
 
 
+def check_room() -> None:
+    """
+    Function to scan the entire office for red and green stickers.
+    """
+
+    found_red = check_red(30)
+    if found_red:
+        turn(90)
+    else:
+        found_green_tuple = check_green(40)
+        found_green = found_green_tuple[0]
+        move_back_right = found_green_tuple[1]
+        move_back_left = found_green_tuple[2]
+        count = found_green_tuple[3]
+        if found_green:
+            drop_block()
+            play_sound(0)
+            stop()
+            RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
+            LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
+            RIGHT_MOTOR.set_position_relative(move_back_right + 90)
+            LEFT_MOTOR.set_position_relative(move_back_left - 90)
+            wait_in_office()
+            stop()
+            sleep(0.1)
+            move_back_in_office(-2 * count - 2)
+            stop()
+        else:
+            stop()
+            RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
+            LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
+            RIGHT_MOTOR.set_position_relative(move_back_right)
+            LEFT_MOTOR.set_position_relative(move_back_left)
+            wait_in_office()
+            stop()
+            sleep(0.1)
+            move_back_in_office(-2 * count - 2)
+            stop()
+
+
 def main_move() -> None:
     """
     This is the main function of the code that is ran by the process. Add movement here.
     """
 
-    global ORIENTATION
-    global COORDINATE
-    global AT_OFFICE
-    
-    #Goto first office
+    global DELIVERIES
+
+    # First office
     initiate()
-    goto(2, 2)
-
-    # Check for red sticker (will mess up rest of the code due to different orientation)
-    if AT_OFFICE:
-        found_red = check_red(30)
-        if found_red:
-            turn(90)
-        else:
-            found_green_tuple = check_green(40)
-            found_green = found_green_tuple[0]
-            move_back_right = found_green_tuple[1]  
-            move_back_left = found_green_tuple[2]
-            count = found_green_tuple[3]
-            if found_green:
-                drop_block()
-                play_sound(0)
-                stop()
-                RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-                LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
-                RIGHT_MOTOR.set_position_relative(move_back_right + 90)
-                LEFT_MOTOR.set_position_relative(move_back_left - 90)
-                wait_in_office()
-                stop()
-                move_back_in_office(-2*count)
-                stop()
-                turn_to_line()
-            else:
-                stop()
-                RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-                LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
-                RIGHT_MOTOR.set_position_relative(move_back_right)
-                LEFT_MOTOR.set_position_relative(move_back_left)
-                wait_in_office()
-                stop()
-                move_back_in_office(-2*count)
-                stop()
-                turn_to_line()
-
-
-    #Go back to front of office
-    ORIENTATION = 0
-    COORDINATE = (2,1)
-    AT_OFFICE = False
-    #Goto second office
-    goto(4, 2)
-
-    # Check for red sticker (will mess up rest of the code due to different orientation)
-    if AT_OFFICE:
-        found_red = check_red(30)
-        if found_red:
-            turn(90)
-        else:
-            found_green_tuple = check_green(40)
-            found_green = found_green_tuple[0]
-            move_back_right = found_green_tuple[1]  
-            move_back_left = found_green_tuple[2]
-            count = found_green_tuple[3]
-            if found_green:
-                drop_block()
-                play_sound(0)
-                stop()
-                RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-                LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
-                RIGHT_MOTOR.set_position_relative(move_back_right + 90)
-                LEFT_MOTOR.set_position_relative(move_back_left - 90)
-                wait_in_office()
-                stop()
-                move_back_in_office(-2*count)
-                stop()
-                turn_to_line()
-            else:
-                stop()
-                RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-                LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
-                RIGHT_MOTOR.set_position_relative(move_back_right)
-                LEFT_MOTOR.set_position_relative(move_back_left)
-                wait_in_office()
-                stop()
-                move_back_in_office(-2*count)
-                stop()
-                turn_to_line()
-    
-    ORIENTATION = 0
-    COORDINATE = (4,1)
-    AT_OFFICE = False
-    #Goto second office
-    goto(5, 1)
+    follow_line(3 * TILE_SIZE)
     turn(-90)
 
-    ORIENTATION = 90
-    goto(4,4)
+    sleep(0.1)
+    check_room()
+    turn_to_line()
 
-    if AT_OFFICE:
-        found_red = check_red(30)
-        if found_red:
-            turn(90)
-        else:
-            found_green_tuple = check_green(40)
-            found_green = found_green_tuple[0]
-            move_back_right = found_green_tuple[1]  
-            move_back_left = found_green_tuple[2]
-            count = found_green_tuple[3]
-            if found_green:
-                drop_block()
-                play_sound(0)
-                stop()
-                RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-                LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
-                RIGHT_MOTOR.set_position_relative(move_back_right + 90)
-                LEFT_MOTOR.set_position_relative(move_back_left - 90)
-                wait_in_office()
-                stop()
-                move_back_in_office(-2*count)
-                stop()
-                turn_to_line()
-            else:
-                stop()
-                RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-                LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
-                RIGHT_MOTOR.set_position_relative(move_back_right)
-                LEFT_MOTOR.set_position_relative(move_back_left)
-                wait_in_office()
-                stop()
-                move_back_in_office(-2*count)
-                stop()
-                turn_to_line()
-        
-    ORIENTATION = 90
-    COORDINATE = (5,4)
-    AT_OFFICE = False
-    #Goto second office
-    goto(5, 5)
-
+    # Second office
+    follow_line(TILE_SIZE)
     turn(-90)
-    ORIENTATION = 180
-    goto(2,4)
 
-    if AT_OFFICE:
-        found_red = check_red(30)
-        if found_red:
-            turn(-90)
-        else:
-            found_green_tuple = check_green(40)
-            found_green = found_green_tuple[0]
-            move_back_right = found_green_tuple[1]  
-            move_back_left = found_green_tuple[2]
-            count = found_green_tuple[3]
-            if found_green:
-                drop_block()
-                play_sound(0)
-                stop()
-                RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-                LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
-                RIGHT_MOTOR.set_position_relative(move_back_right + 90)
-                LEFT_MOTOR.set_position_relative(move_back_left - 90)
-                wait_in_office()
-                stop()
-                move_back_in_office(-2*count)
-                stop()
-                turn_to_line_2()
-            else:
-                stop()
-                RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-                LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
-                RIGHT_MOTOR.set_position_relative(move_back_right)
-                LEFT_MOTOR.set_position_relative(move_back_left)
-                wait_in_office()
-                stop()
-                move_back_in_office(-2*count)
-                stop()
-                turn_to_line_2()
-    
-    ORIENTATION = 0
-    COORDINATE = (2,5)
-    AT_OFFICE = False
+    sleep(0.1)
+    check_room()
 
-    goto(3,3)
-    
+    # Mail room
+    if DELIVERIES == 2:
+        turn_to_line_2()
+        follow_line(2 * TILE_SIZE)
+        turn(90)
+        follow_line(2.1 * TILE_SIZE)
+        sleep(0.2)
+        play_sound(1)
+    else:
+        turn_to_line()
+
+    # Big corner
+    follow_line(7)
+    turn(-75)
+
+    # Third office
+    follow_line(TILE_SIZE)
+    turn(-90)
+
+    sleep(0.1)
+    check_room()
+    turn_to_line()
+
+    # Big corner
+    follow_line(7)
+    turn(-75)
+
+    # Mail room
+    if DELIVERIES == 2:
+        follow_line(2 * TILE_SIZE)
+        turn(-90)
+        follow_line(2.1 * TILE_SIZE)
+        sleep(0.2)
+        play_sound(1)
+
+    # Fourth office
+    follow_line(TILE_SIZE)
+    turn(-90)
+
+    sleep(0.1)
+    check_room()
+    turn_to_line_2()
+
+    # Mail room
+    follow_line(2 * TILE_SIZE)
+    turn(90)
+    follow_line(2.1 * TILE_SIZE)
+    sleep(0.2)
+    play_sound(1)
 
 
 if __name__ == "__main__":
