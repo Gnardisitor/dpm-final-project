@@ -123,7 +123,7 @@ def is_black() -> bool:
     dist = fabs(ambient - AMBIENTS["black"])
     error = dist / AMBIENTS["black"]
 
-    return error <= 0.35
+    return error <= 0.3
 
 
 # Simple test loop
