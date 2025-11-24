@@ -104,8 +104,6 @@ def wait_in_office() -> None:
     Waits until both motors have stopped moving.
     """
 
-    global AT_OFFICE
-
     # Wait until the motor start moving
     while isclose(RIGHT_MOTOR.get_speed(), 0):
         sleep(POLL)
@@ -635,9 +633,13 @@ def check_green(sweep_degrees):
 
 
 def drop_block():
-    global DELIVERIES
-    DELIVERIES += 1
+    """
+    Drops a single block from the conveyor belt.
+    """
 
+    global DELIVERIES
+
+    # Move slightly to the right
     right()
     RIGHT_MOTOR.set_limits(dps=0.20 * DPS, power=POWER)
     LEFT_MOTOR.set_limits(dps=0.20 * DPS, power=POWER)
@@ -645,13 +647,32 @@ def drop_block():
     LEFT_MOTOR.set_position_relative(90)
     wait_in_office()
     stop()
+
+    # Run conveyor belt to drop block
     CONVEYER_MOTOR.set_dps(-0.6 * DPS)
     CONVEYER_MOTOR.set_limits(dps=0.6 * DPS, power=POWER)
-    CONVEYER_MOTOR.set_position_relative(180)
+    CONVEYER_MOTOR.set_position_relative(150)
     wait_drop()
+    stop()
+
+    # Increment deliveries completed
+    DELIVERIES += 1
 
 
 def black_sweep(encoder_degrees: int) -> bool:
+    """
+    Sweeps equally in both directions and stops once the black line is found.
+
+    Parameters
+    ----------
+    encoder_degrees : int
+        The maximum rotation in encoder degrees to sweep in each direction.
+
+    Returns
+    -------
+    bool
+        Whether or not the black line was found.
+    """
     right()
     RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
     LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
@@ -723,16 +744,40 @@ def black_sweep(encoder_degrees: int) -> bool:
 
 
 def follow_line(distance: float) -> None:
+    """
+    Follow the black line until it reaches the specified distance from the wall.
+
+    Parameters
+    ----------
+    distance : float
+        The wanted distance from the wall in centimeters.
+    """
+
+    global DELIVERIES
+    global AT_OFFICE
+
     forward()
     while ULTRASONIC_SENSOR.get_value() > distance:
         if not is_black() and ULTRASONIC_SENSOR.get_value() > 15.0:
             stop()
             sleep(0.1)
+
+            # Check for black line
             black = black_sweep(20)
             if not black:
                 black = black_sweep(45)
                 if not black:
                     black_sweep(60)
+
+            sleep(0.1)
+
+            # If at mail room
+            if DELIVERIES == 2 and get_color() == "blue":
+                AT_OFFICE = False
+                move(TILE_SIZE)
+                return
+
+            # Continue forward
             sleep(0.1)
             forward()
 
@@ -740,7 +785,11 @@ def follow_line(distance: float) -> None:
     stop()
 
 
-def turn_to_line():
+def turn_to_line_right():
+    """
+    Turns to the right until the black line is reached.
+    """
+
     right()
     RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
     LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
@@ -753,7 +802,11 @@ def turn_to_line():
     stop()
 
 
-def turn_to_line_2():
+def turn_to_line_left():
+    """
+    Turns to the left until the black line is reached.
+    """
+
     left()
     RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
     LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
@@ -784,39 +837,41 @@ def check_room() -> None:
     Function to scan the entire office for red and green stickers.
     """
 
+    sleep(0.1)
     found_red = check_red(30)
     if found_red:
-        turn(90)
+        return
     else:
         found_green_tuple = check_green(40)
         found_green = found_green_tuple[0]
         move_back_right = found_green_tuple[1]
         move_back_left = found_green_tuple[2]
         count = found_green_tuple[3]
+
         if found_green:
             drop_block()
             play_sound(0)
             stop()
+            sleep(0.2)
+
             RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
             LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
             RIGHT_MOTOR.set_position_relative(move_back_right + 90)
             LEFT_MOTOR.set_position_relative(move_back_left - 90)
             wait_in_office()
             stop()
-            sleep(0.1)
+            sleep(0.4)
+
             move_back_in_office(-2 * count - 2)
             stop()
+            sleep(0.2)
         else:
             stop()
-            RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-            LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
-            RIGHT_MOTOR.set_position_relative(move_back_right)
-            LEFT_MOTOR.set_position_relative(move_back_left)
-            wait_in_office()
-            stop()
-            sleep(0.1)
+            sleep(0.2)
+
             move_back_in_office(-2 * count - 2)
             stop()
+            sleep(0.2)
 
 
 def main_move() -> None:
@@ -829,14 +884,18 @@ def main_move() -> None:
     # First office
     initiate()
     follow_line(3 * TILE_SIZE)
+    sleep(0.2)
     turn(-90)
 
     sleep(0.1)
     check_room()
-    turn_to_line()
+    sleep(0.2)
+    turn_to_line_right()
+    sleep(0.2)
 
     # Second office
-    follow_line(TILE_SIZE)
+    follow_line(TILE_SIZE + 2)
+    sleep(0.2)
     turn(-90)
 
     sleep(0.1)
@@ -844,50 +903,72 @@ def main_move() -> None:
 
     # Mail room
     if DELIVERIES == 2:
-        turn_to_line_2()
+        sleep(0.2)
+        turn_to_line_left()
+        sleep(0.2)
         follow_line(2 * TILE_SIZE)
+        sleep(0.2)
         turn(90)
+        sleep(0.2)
         follow_line(2.1 * TILE_SIZE)
         sleep(0.2)
         play_sound(1)
+        exit()
     else:
-        turn_to_line()
+        sleep(0.2)
+        turn_to_line_right()
 
     # Big corner
     follow_line(7)
+    sleep(0.2)
     turn(-75)
+    sleep(0.2)
 
     # Third office
-    follow_line(TILE_SIZE)
+    follow_line(TILE_SIZE + 2)
+    sleep(0.2)
     turn(-90)
+    sleep(0.2)
 
     sleep(0.1)
     check_room()
-    turn_to_line()
+    sleep(0.2)
+    turn_to_line_right()
 
     # Big corner
     follow_line(7)
+    sleep(0.2)
     turn(-75)
 
     # Mail room
     if DELIVERIES == 2:
+        sleep(0.2)
         follow_line(2 * TILE_SIZE)
+        sleep(0.2)
         turn(-90)
+        sleep(0.2)
         follow_line(2.1 * TILE_SIZE)
         sleep(0.2)
         play_sound(1)
+        exit()
 
     # Fourth office
-    follow_line(TILE_SIZE)
+    sleep(0.2)
+    follow_line(TILE_SIZE + 2)
+    sleep(0.2)
     turn(-90)
 
     sleep(0.1)
     check_room()
-    turn_to_line_2()
+    sleep(0.2)
+    turn_to_line_left()
 
     # Mail room
+    sleep(0.2)
     follow_line(2 * TILE_SIZE)
+    sleep(0.2)
     turn(90)
+    sleep(0.2)
     follow_line(2.1 * TILE_SIZE)
     sleep(0.2)
     play_sound(1)
