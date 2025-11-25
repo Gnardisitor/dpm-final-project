@@ -465,6 +465,8 @@ def goto(x: int, y: int) -> None:
 
 def check_red(encoder_degrees):
     red_found = False
+    sleep(0.1)
+
     right()
     RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
     LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
@@ -483,6 +485,8 @@ def check_red(encoder_degrees):
         sleep(POLL)
 
     stop()
+    sleep(0.1)
+
     # Sweep to the left
     left()
     RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
@@ -502,6 +506,8 @@ def check_red(encoder_degrees):
         sleep(POLL)
 
     stop()
+    sleep(0.1)
+
     right()
     RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
     LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
@@ -518,9 +524,14 @@ def check_red(encoder_degrees):
         if color == "red":
             red_found = True
         sleep(POLL)
+
+    stop()
+    
     if red_found:
         print("Found red")
     return red_found
+
+    
 
 
 def green_sweep(encoder_degrees: int) -> bool:
@@ -642,8 +653,8 @@ def drop_block():
     # Move slightly to the right
     sleep(0.4)
     right()
-    RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-    LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
+    RIGHT_MOTOR.set_limits(dps=0.3 * DPS, power=POWER)
+    LEFT_MOTOR.set_limits(dps=0.3 * DPS, power=POWER)
     RIGHT_MOTOR.set_position_relative(-90)
     LEFT_MOTOR.set_position_relative(90)
     wait_in_office()
