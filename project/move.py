@@ -28,6 +28,7 @@ DELIVERIES = 0
 WHEEL_DIAMETER = 4.2
 TURN_DIAMETER = 16.2
 TILE_SIZE = 25
+DROP_TURN = 40
 
 # Computed values
 DISTANCE_TO_DEGREE = 360 / (pi * WHEEL_DIAMETER)
@@ -38,6 +39,7 @@ MAX_DELTA = 1
 DPS = 450
 POWER = DPS / 1250 * 100
 POLL = 0.01
+SLEEP = 0.5
 
 NOTES = [
     sound.Sound(duration=0.5, pitch="C5", volume=95),
@@ -81,22 +83,13 @@ def wait() -> None:
     Waits until both motors have stopped moving.
     """
 
-    global AT_OFFICE
-
     # Wait until the motor start moving
     while isclose(RIGHT_MOTOR.get_speed(), 0):
         sleep(POLL)
 
     # Wait until the motor stop moving
-    set_flag = False
     while not isclose(RIGHT_MOTOR.get_speed(), 0):
-        if get_color() == "orange" and not set_flag:
-            AT_OFFICE = not AT_OFFICE
-            set_flag = True
         sleep(POLL)
-
-    if AT_OFFICE:
-        print("The robot is at the door of an office!")
 
 
 def wait_in_office() -> None:
@@ -151,7 +144,7 @@ def left() -> None:
     """
 
     RIGHT_MOTOR.set_dps(DPS)
-    LEFT_MOTOR.set_dps(-DPS)
+    LEFT_MOTOR.set_dps(-DPS - 5)
 
 
 def right() -> None:
@@ -160,7 +153,7 @@ def right() -> None:
     """
 
     RIGHT_MOTOR.set_dps(-DPS)
-    LEFT_MOTOR.set_dps(DPS)
+    LEFT_MOTOR.set_dps(DPS + 5)
 
 
 def stop() -> None:
@@ -185,7 +178,7 @@ def move(distance: float) -> None:
     global AT_OFFICE
 
     # Check for invalid distance
-    if isclose(distance, 0) or AT_OFFICE:
+    if isclose(distance, 0):
         return
 
     # Compute encoder degrees
@@ -196,9 +189,6 @@ def move(distance: float) -> None:
         if distance > 0:
             forward()
         else:
-            # Set limits (makes moving backward properly)
-            RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-            LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
             backward()
 
         # Set wanted position
@@ -344,128 +334,9 @@ def turn(degrees: int) -> None:
         stop()
 
 
-def goto(x: int, y: int) -> None:
-    """
-    Moves the robot to the specific tile in the coordinate system using simple brute force movement.
-
-    Parameters
-    ----------
-    x : int
-        The x-coordinate to move to.
-    y : int
-        The y-coordinate to move to.
-    """
-
-    global COORDINATE
-    global ORIENTATION
-
-    # Check for valid coordinates
-    if x < 1 or y < 1:
-        print("Cannot have negative coordinates")
-        return
-
-    if x > 5 or y > 5:
-        print("Coordinates exceed grid size")
-        return
-
-    # Compute delta
-    delta = (x - COORDINATE[0], y - COORDINATE[1])
-
-    # Check for valid orientation
-    if ORIENTATION % 90 != 0:
-        print("Orientation is not aligned to cardinal directions")
-        return
-
-    # If facing right
-    if ORIENTATION == 0:
-        # Move in x direction
-        move(delta[0] * TILE_SIZE)
-
-        sleep(1)
-
-        # Turn to face y direction
-        if delta[1] > 0:
-            turn(-90)
-            ORIENTATION += 90
-        elif delta[1] < 0:
-            turn(90)
-            ORIENTATION -= 90
-
-        sleep(1)
-
-        # Move in y direction
-        move(abs(delta[1]) * TILE_SIZE)
-
-    # If facing up
-    elif ORIENTATION == 90:
-        # Move in y direction
-        move(delta[1] * TILE_SIZE)
-
-        sleep(1)
-
-        # Turn to face x direction
-        if delta[0] > 0:
-            turn(90)
-            ORIENTATION -= 90
-        elif delta[0] < 0:
-            turn(-90)
-            ORIENTATION += 90
-
-        sleep(1)
-
-        # Move in x direction
-        move(abs(delta[0]) * TILE_SIZE)
-
-    # If facing left
-    elif ORIENTATION == 180:
-        # Move in x direction
-        move(-delta[0] * TILE_SIZE)
-
-        sleep(1)
-
-        # Turn to face y direction
-        if delta[1] > 0:
-            turn(90)
-            ORIENTATION -= 90
-        elif delta[1] < 0:
-            turn(-90)
-            ORIENTATION += 90
-
-        sleep(1)
-
-        # Move in y direction
-        move(abs(delta[1]) * TILE_SIZE)
-
-    # If facing down
-    elif ORIENTATION == 270:
-        # Move in y direction
-        move(-delta[1] * TILE_SIZE)
-
-        sleep(1)
-
-        # Turn to face x direction
-        if delta[0] > 0:
-            turn(-90)
-            ORIENTATION += 90
-        elif delta[0] < 0:
-            turn(90)
-            ORIENTATION -= 90
-
-        sleep(1)
-
-        # Move in x direction
-        move(abs(delta[0]) * TILE_SIZE)
-
-    # Normalize orientation
-    ORIENTATION = ORIENTATION % 360
-    COORDINATE = (x, y)
-
-    print(f"At {COORDINATE[0]}, {COORDINATE[1]} rotated {ORIENTATION} degrees.")
-
-
 def check_red(encoder_degrees):
     red_found = False
-    sleep(0.1)
+    sleep(SLEEP)
 
     right()
     RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
@@ -485,7 +356,7 @@ def check_red(encoder_degrees):
         sleep(POLL)
 
     stop()
-    sleep(0.1)
+    sleep(SLEEP)
 
     # Sweep to the left
     left()
@@ -506,7 +377,7 @@ def check_red(encoder_degrees):
         sleep(POLL)
 
     stop()
-    sleep(0.1)
+    sleep(SLEEP)
 
     right()
     RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
@@ -526,18 +397,16 @@ def check_red(encoder_degrees):
         sleep(POLL)
 
     stop()
-    
+
     if red_found:
         print("Found red")
     return red_found
 
-    
-
 
 def green_sweep(encoder_degrees: int) -> bool:
-    sleep(0.2)
+    sleep(SLEEP)
     move_straight_in_office(2)
-    sleep(0.3)
+    sleep(SLEEP)
 
     right()
     start_degrees_right = RIGHT_MOTOR.get_position()
@@ -567,7 +436,7 @@ def green_sweep(encoder_degrees: int) -> bool:
         sleep(POLL)
 
     stop()
-    sleep(0.3)
+    sleep(SLEEP)
 
     # Sweep to the left
     left()
@@ -596,7 +465,7 @@ def green_sweep(encoder_degrees: int) -> bool:
         sleep(POLL)
 
     stop()
-    sleep(0.3)
+    sleep(SLEEP)
 
     right()
     RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
@@ -624,7 +493,7 @@ def green_sweep(encoder_degrees: int) -> bool:
         sleep(POLL)
 
     stop()
-    sleep(0.3)
+    sleep(SLEEP)
 
     return [False, 0, 0]
 
@@ -651,30 +520,30 @@ def drop_block():
     global DELIVERIES
 
     # Move slightly to the right
-    sleep(0.4)
+    sleep(SLEEP)
     right()
-    RIGHT_MOTOR.set_limits(dps=0.3 * DPS, power=POWER)
-    LEFT_MOTOR.set_limits(dps=0.3 * DPS, power=POWER)
-    RIGHT_MOTOR.set_position_relative(-90)
-    LEFT_MOTOR.set_position_relative(90)
+    RIGHT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
+    LEFT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
+    RIGHT_MOTOR.set_position_relative(-DROP_TURN)
+    LEFT_MOTOR.set_position_relative(DROP_TURN)
     wait_in_office()
     stop()
-    sleep(0.1)
+    sleep(SLEEP)
 
     # Run conveyor belt to drop block
-    CONVEYER_MOTOR.set_dps(-0.6 * DPS)
-    CONVEYER_MOTOR.set_limits(dps=0.6 * DPS, power=POWER)
+    CONVEYER_MOTOR.set_dps(-DPS)
+    CONVEYER_MOTOR.set_limits(dps=DPS, power=POWER)
     CONVEYER_MOTOR.set_position_relative(150)
     wait_drop()
     CONVEYER_MOTOR.set_dps(0)
-    sleep(0.1)
+    sleep(SLEEP)
 
-    CONVEYER_MOTOR.set_dps(0.6 * DPS)
-    CONVEYER_MOTOR.set_limits(dps=0.6 * DPS, power=POWER)
+    CONVEYER_MOTOR.set_dps(DPS)
+    CONVEYER_MOTOR.set_limits(dps=DPS, power=POWER)
     CONVEYER_MOTOR.set_position_relative(-90)
     wait_drop()
     CONVEYER_MOTOR.set_dps(0)
-    sleep(0.1)
+    sleep(SLEEP)
 
     # Increment deliveries completed
     DELIVERIES += 1
@@ -784,23 +653,19 @@ def follow_line(distance: float) -> None:
 
         if not is_black() and current_distance > 15.0:
             stop()
-            sleep(0.1)
+            sleep(SLEEP)
 
             # Check for black line
             black = black_sweep(20)
             if not black:
                 black = black_sweep(45)
                 if not black:
-                    black_sweep(60)
-
-                    # If at mail room
-                    if DELIVERIES == 2 and get_color() == "blue":
-                        AT_OFFICE = False
-                        move(TILE_SIZE - 5)
-                        return
+                    black = black_sweep(60)
+                    if not black:
+                        black = black_sweep(90)
 
             # Continue forward
-            sleep(0.1)
+            sleep(SLEEP)
             forward()
 
         current_distance = ULTRASONIC_SENSOR.get_value()
@@ -814,12 +679,15 @@ def turn_to_line_right():
     """
 
     right()
-    RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-    LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
+    RIGHT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
+    LEFT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
     RIGHT_MOTOR.set_position_relative(-65 * DEGREE_TO_ROTATION)
     LEFT_MOTOR.set_position_relative(65 * DEGREE_TO_ROTATION)
     wait_in_office()
+
     right()
+    RIGHT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
+    LEFT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
     while not is_black():
         sleep(POLL)
     stop()
@@ -831,12 +699,15 @@ def turn_to_line_left():
     """
 
     left()
-    RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-    LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
+    RIGHT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
+    LEFT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
     RIGHT_MOTOR.set_position_relative(65 * DEGREE_TO_ROTATION)
     LEFT_MOTOR.set_position_relative(-65 * DEGREE_TO_ROTATION)
     wait_in_office()
+
     left()
+    RIGHT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
+    LEFT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
     while not is_black():
         sleep(POLL)
     stop()
@@ -860,7 +731,7 @@ def check_room() -> None:
     Function to scan the entire office for red and green stickers.
     """
 
-    sleep(0.1)
+    sleep(SLEEP)
     found_red = check_red(30)
     if found_red:
         return
@@ -875,26 +746,26 @@ def check_room() -> None:
             drop_block()
             play_sound(0)
             stop()
-            sleep(0.2)
+            sleep(SLEEP)
 
             RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
             LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
-            RIGHT_MOTOR.set_position_relative(move_back_right + 90)
-            LEFT_MOTOR.set_position_relative(move_back_left - 90)
+            RIGHT_MOTOR.set_position_relative(move_back_right + DROP_TURN)
+            LEFT_MOTOR.set_position_relative(move_back_left - DROP_TURN)
             wait_in_office()
             stop()
-            sleep(0.4)
+            sleep(SLEEP)
 
             move_back_in_office(-2 * count - 2)
             stop()
-            sleep(0.2)
+            sleep(SLEEP)
         else:
             stop()
-            sleep(0.2)
+            sleep(SLEEP)
 
             move_back_in_office(-2 * count - 2)
             stop()
-            sleep(0.2)
+            sleep(SLEEP)
 
 
 def main_move() -> None:
@@ -907,116 +778,119 @@ def main_move() -> None:
     # First office
     print("Going to first office")
     initiate()
-    follow_line(3 * TILE_SIZE)
-    sleep(0.2)
+    follow_line(3 * TILE_SIZE - 2)
+    sleep(SLEEP)
     turn(-90)
 
-    sleep(0.1)
+    sleep(SLEEP)
     print("Checking first office")
     check_room()
-    sleep(0.2)
+    sleep(SLEEP)
     turn_to_line_right()
-    sleep(0.2)
+    sleep(SLEEP)
 
     # Second office
     print("Going to second office")
     follow_line(TILE_SIZE + 2)
-    sleep(0.2)
+    sleep(SLEEP)
     turn(-90)
 
-    sleep(0.1)
+    sleep(SLEEP)
     print("Checking second office")
     check_room()
 
     # Mail room
     if DELIVERIES == 2:
-        sleep(0.2)
+        sleep(SLEEP)
         turn_to_line_left()
-        sleep(0.2)
+        sleep(SLEEP)
         print("Going to mail room")
         follow_line(2 * TILE_SIZE)
-        sleep(0.2)
+        sleep(SLEEP)
         print("Turning to mail room")
         turn(90)
-        sleep(0.2)
+        sleep(SLEEP)
         print("Going to mail room")
-        follow_line(2.1 * TILE_SIZE)
-        sleep(0.2)
+        follow_line(3.1 * TILE_SIZE)
+        move(20)
+        sleep(SLEEP)
         print("At mail room")
         play_sound(1)
         exit()
     else:
-        sleep(0.2)
+        sleep(SLEEP)
         turn_to_line_right()
 
     # Big corner
     print("Going to first corner")
     follow_line(7)
-    sleep(0.2)
+    sleep(SLEEP)
     print("Turning first corner")
     turn(-75)
-    sleep(0.2)
+    sleep(SLEEP)
 
     # Third office
     print("Going to third office")
     follow_line(TILE_SIZE + 2)
-    sleep(0.2)
+    sleep(SLEEP)
     turn(-90)
-    sleep(0.2)
+    sleep(SLEEP)
 
-    sleep(0.1)
+    sleep(SLEEP)
     print("Checking third office")
     check_room()
-    sleep(0.2)
+    sleep(SLEEP)
     turn_to_line_right()
 
     # Big corner
     print("Going to second corner")
     follow_line(7)
-    sleep(0.2)
+    sleep(SLEEP)
     print("Turning second corner")
     turn(-75)
 
     # Mail room
     if DELIVERIES == 2:
         print("Going to mail room")
-        sleep(0.2)
+        sleep(SLEEP)
         follow_line(2 * TILE_SIZE)
-        sleep(0.2)
+        sleep(SLEEP)
         print("Turning to mail room")
         turn(-90)
-        sleep(0.2)
+        sleep(SLEEP)
         print("Going to mail room")
-        follow_line(2.1 * TILE_SIZE)
-        sleep(0.2)
+        follow_line(3.1 * TILE_SIZE)
+        move(20)
+        sleep(SLEEP)
         print("At mail room")
         play_sound(1)
         exit()
 
     # Fourth office
     print("Going to fourth office")
-    sleep(0.2)
+    sleep(SLEEP)
     follow_line(TILE_SIZE + 2)
-    sleep(0.2)
+    sleep(SLEEP)
     turn(-90)
 
-    sleep(0.1)
+    sleep(SLEEP)
     print("Checking fourth office")
     check_room()
-    sleep(0.2)
+    sleep(SLEEP)
     turn_to_line_left()
 
     # Mail room
     print("Going to mail room")
-    sleep(0.2)
+    sleep(SLEEP)
     follow_line(2 * TILE_SIZE)
-    sleep(0.2)
+    sleep(SLEEP)
     print("Turning to mail room")
     turn(90)
-    sleep(0.2)
+    sleep(SLEEP)
     print("Going to mail room")
-    follow_line(2.1 * TILE_SIZE)
-    sleep(0.2)
+    follow_line(3.1 * TILE_SIZE)
+    move(20)
+    sleep(SLEEP)
     print("At mail room")
     play_sound(1)
 
