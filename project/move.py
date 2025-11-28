@@ -10,17 +10,12 @@ from utils.brick import EV3UltrasonicSensor, Motor, TouchSensor, wait_ready_sens
 STOP = TouchSensor(3)
 RIGHT_MOTOR = Motor("C")
 LEFT_MOTOR = Motor("B")
-CONVEYER_MOTOR = Motor("A")
+CONVEYOR_MOTOR = Motor("D")
 ULTRASONIC_SENSOR = EV3UltrasonicSensor(1)
 
 print("Sensors waiting")
 wait_ready_sensors()
 print("Sensors ready")
-
-# Coordinate system values (tiles go from 1 to 5)
-COORDINATE = (1, 1)
-ORIENTATION = 0  # Horizontal facing right in degrees
-AT_OFFICE = False
 
 DELIVERIES = 0
 
@@ -92,31 +87,16 @@ def wait() -> None:
         sleep(POLL)
 
 
-def wait_in_office() -> None:
-    """
-    Waits until both motors have stopped moving.
-    """
-
-    # Wait until the motor start moving
-    while isclose(RIGHT_MOTOR.get_speed(), 0):
-        sleep(POLL)
-
-    while not isclose(RIGHT_MOTOR.get_speed(), 0):
-        sleep(POLL)
-
-
 def wait_drop() -> None:
     """
     Waits until both motors have stopped moving.
     """
 
-    global AT_OFFICE
-
     # Wait until the motor start moving
-    while isclose(CONVEYER_MOTOR.get_speed(), 0):
+    while isclose(CONVEYOR_MOTOR.get_speed(), 0):
         sleep(POLL)
 
-    while not isclose(CONVEYER_MOTOR.get_speed(), 0):
+    while not isclose(CONVEYOR_MOTOR.get_speed(), 0):
         sleep(POLL)
 
 
@@ -175,8 +155,6 @@ def move(distance: float) -> None:
         The distance to move in centimeters. Positive values move forward, and negative values move backward.
     """
 
-    global AT_OFFICE
-
     # Check for invalid distance
     if isclose(distance, 0):
         return
@@ -189,6 +167,8 @@ def move(distance: float) -> None:
         if distance > 0:
             forward()
         else:
+            RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
+            LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
             backward()
 
         # Set wanted position
@@ -222,14 +202,14 @@ def move_straight_in_office(distance: float) -> None:
             forward()
         else:
             # Set limits (makes moving backward properly)
-            # RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-            # LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
+            RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
+            LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
             backward()
 
         # Set wanted position
         RIGHT_MOTOR.set_position_relative(encoder_degrees)
         LEFT_MOTOR.set_position_relative(encoder_degrees)
-        wait_in_office()
+        wait()
     finally:
         stop()
 
@@ -260,7 +240,7 @@ def move_back_in_office(distance: float) -> None:
     # Set wanted position
     RIGHT_MOTOR.set_position_relative(encoder_degrees)
     LEFT_MOTOR.set_position_relative(encoder_degrees)
-    wait_in_office()
+    wait()
     stop()
 
 
@@ -277,7 +257,7 @@ def left_motor_only(distance):
 
     # Set wanted position
     LEFT_MOTOR.set_position_relative(encoder_degrees)
-    wait_in_office()
+    wait()
     stop()
 
 
@@ -294,7 +274,7 @@ def right_motor_only(distance):
 
     # Set wanted position
     RIGHT_MOTOR.set_position_relative(encoder_degrees)
-    wait_in_office()
+    wait()
     stop()
 
 
@@ -526,23 +506,23 @@ def drop_block():
     LEFT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
     RIGHT_MOTOR.set_position_relative(-DROP_TURN)
     LEFT_MOTOR.set_position_relative(DROP_TURN)
-    wait_in_office()
+    wait()
     stop()
     sleep(SLEEP)
 
     # Run conveyor belt to drop block
-    CONVEYER_MOTOR.set_dps(-DPS)
-    CONVEYER_MOTOR.set_limits(dps=DPS, power=POWER)
-    CONVEYER_MOTOR.set_position_relative(150)
+    CONVEYOR_MOTOR.set_dps(DPS)
+    CONVEYOR_MOTOR.set_limits(dps=DPS, power=POWER)
+    CONVEYOR_MOTOR.set_position_relative(150)
     wait_drop()
-    CONVEYER_MOTOR.set_dps(0)
+    CONVEYOR_MOTOR.set_dps(0)
     sleep(SLEEP)
 
-    CONVEYER_MOTOR.set_dps(DPS)
-    CONVEYER_MOTOR.set_limits(dps=DPS, power=POWER)
-    CONVEYER_MOTOR.set_position_relative(-90)
+    CONVEYOR_MOTOR.set_dps(-DPS)
+    CONVEYOR_MOTOR.set_limits(dps=DPS, power=POWER)
+    CONVEYOR_MOTOR.set_position_relative(-90)
     wait_drop()
-    CONVEYER_MOTOR.set_dps(0)
+    CONVEYOR_MOTOR.set_dps(0)
     sleep(SLEEP)
 
     # Increment deliveries completed
@@ -644,7 +624,6 @@ def follow_line(distance: float) -> None:
     """
 
     global DELIVERIES
-    global AT_OFFICE
 
     forward()
     current_distance = ULTRASONIC_SENSOR.get_value()
@@ -683,7 +662,7 @@ def turn_to_line_right():
     LEFT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
     RIGHT_MOTOR.set_position_relative(-65 * DEGREE_TO_ROTATION)
     LEFT_MOTOR.set_position_relative(65 * DEGREE_TO_ROTATION)
-    wait_in_office()
+    wait()
 
     right()
     RIGHT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
@@ -703,7 +682,7 @@ def turn_to_line_left():
     LEFT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
     RIGHT_MOTOR.set_position_relative(65 * DEGREE_TO_ROTATION)
     LEFT_MOTOR.set_position_relative(-65 * DEGREE_TO_ROTATION)
-    wait_in_office()
+    wait()
 
     left()
     RIGHT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
@@ -752,7 +731,7 @@ def check_room() -> None:
             LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
             RIGHT_MOTOR.set_position_relative(move_back_right + DROP_TURN)
             LEFT_MOTOR.set_position_relative(move_back_left - DROP_TURN)
-            wait_in_office()
+            wait()
             stop()
             sleep(SLEEP)
 
@@ -778,7 +757,7 @@ def main_move() -> None:
     # First office
     print("Going to first office")
     initiate()
-    follow_line(3 * TILE_SIZE - 2)
+    follow_line(3 * TILE_SIZE)
     sleep(SLEEP)
     turn(-90)
 
