@@ -53,6 +53,7 @@ def play_victory_sound() -> None:
     """
 
     VICTORY_SOUND.play()
+    sleep(5)
 
 
 def initiate() -> None:
@@ -121,7 +122,7 @@ def left() -> None:
     """
 
     RIGHT_MOTOR.set_dps(DPS)
-    LEFT_MOTOR.set_dps(-DPS)
+    LEFT_MOTOR.set_dps(-DPS - 5)
 
 
 def right() -> None:
@@ -130,7 +131,7 @@ def right() -> None:
     """
 
     RIGHT_MOTOR.set_dps(-DPS)
-    LEFT_MOTOR.set_dps(DPS)
+    LEFT_MOTOR.set_dps(DPS + 5)
 
 
 def stop() -> None:
@@ -653,6 +654,7 @@ def check_room() -> None:
             sleep(SLEEP)
 
             back_to_door()
+            move(1)
             stop()
             sleep(SLEEP)
         else:
@@ -660,6 +662,7 @@ def check_room() -> None:
             sleep(SLEEP)
 
             back_to_door()
+            move(1)
             stop()
             sleep(SLEEP)
 
