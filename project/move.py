@@ -3,7 +3,7 @@ from multiprocessing import Process
 from time import sleep
 
 from color import get_color, is_black
-from utils import sound
+from simpleaudio import WaveObject
 from utils.brick import EV3UltrasonicSensor, Motor, TouchSensor, wait_ready_sensors
 
 # Initialize motors and sensors
@@ -13,11 +13,13 @@ LEFT_MOTOR = Motor("B")
 CONVEYOR_MOTOR = Motor("D")
 ULTRASONIC_SENSOR = EV3UltrasonicSensor(1)
 
+# Sounds
+DROP_SOUND = WaveObject.from_wave_file("sounds/drop.wav")
+VICTORY_SOUND = WaveObject.from_wave_file("sounds/victory.wav")
+
 print("Sensors waiting")
 wait_ready_sensors()
 print("Sensors ready")
-
-DELIVERIES = 0
 
 # Measured values
 WHEEL_DIAMETER = 4.2
@@ -30,32 +32,27 @@ DISTANCE_TO_DEGREE = 360 / (pi * WHEEL_DIAMETER)
 DEGREE_TO_ROTATION = TURN_DIAMETER / WHEEL_DIAMETER
 
 # Values for functions
-MAX_DELTA = 1
+DELIVERIES = 0
 DPS = 450
 POWER = DPS / 1250 * 100
 POLL = 0.01
 SLEEP = 0.5
 
-NOTES = [
-    sound.Sound(duration=0.5, pitch="C5", volume=95),
-    sound.Sound(duration=0.5, pitch="D5", volume=95),
-    sound.Sound(duration=0.5, pitch="E5", volume=95),
-    sound.Sound(duration=0.5, pitch="G5", volume=95),
-]
 
-
-def play_sound(note):
+def play_drop_sound() -> None:
     """
-    Play the wanted note on the speaker.
-
-    Parameters
-    ----------
-    note : int
-        Wanted index of note to play.
+    Plays the drop sound.
     """
 
-    NOTES[note].play()
-    NOTES[note].wait_done()
+    DROP_SOUND.play()
+
+
+def play_victory_sound() -> None:
+    """
+    Plays the victory sound.
+    """
+
+    VICTORY_SOUND.play()
 
 
 def initiate() -> None:
@@ -124,7 +121,7 @@ def left() -> None:
     """
 
     RIGHT_MOTOR.set_dps(DPS)
-    LEFT_MOTOR.set_dps(-DPS - 5)
+    LEFT_MOTOR.set_dps(-DPS)
 
 
 def right() -> None:
@@ -133,7 +130,7 @@ def right() -> None:
     """
 
     RIGHT_MOTOR.set_dps(-DPS)
-    LEFT_MOTOR.set_dps(DPS + 5)
+    LEFT_MOTOR.set_dps(DPS)
 
 
 def stop() -> None:
@@ -174,108 +171,26 @@ def move(distance: float) -> None:
         # Set wanted position
         RIGHT_MOTOR.set_position_relative(encoder_degrees)
         LEFT_MOTOR.set_position_relative(encoder_degrees)
-        wait()
+        RIGHT_MOTOR.wait_is_moving()
+        RIGHT_MOTOR.wait_is_stopped()
     finally:
         stop()
 
 
-def move_straight_in_office(distance: float) -> None:
+def back_to_door() -> None:
     """
-    Moves the robot forward by a certain distance.
-
-    Parameters
-    ----------
-    distance : float
-        The distance to move in centimeters. Positive values move forward, and negative values move backward.
+    Moves the robot backward until it reaches the door.
     """
-
-    # Check for invalid distance
-    if isclose(distance, 0):
-        return
-
-    # Compute encoder degrees
-    encoder_degrees = int(distance * DISTANCE_TO_DEGREE)
 
     try:
         # Set motors to move
-        if distance > 0:
-            forward()
-        else:
-            # Set limits (makes moving backward properly)
-            RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-            LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
-            backward()
+        backward()
 
-        # Set wanted position
-        RIGHT_MOTOR.set_position_relative(encoder_degrees)
-        LEFT_MOTOR.set_position_relative(encoder_degrees)
-        wait()
+        # Poll until it reaches the door
+        while get_color() != "orange":
+            sleep(POLL)
     finally:
         stop()
-
-
-def move_back_in_office(distance: float) -> None:
-    """
-    Moves the robot forward by a certain distance.
-
-    Parameters
-    ----------
-    distance : float
-        The distance to move in centimeters. Positive values move forward, and negative values move backward.
-    """
-
-    # Check for invalid distance
-    if isclose(distance, 0):
-        return
-
-    # Compute encoder degrees
-    encoder_degrees = int(distance * DISTANCE_TO_DEGREE)
-
-    RIGHT_MOTOR.set_dps(-DPS)
-    LEFT_MOTOR.set_dps(-DPS)
-
-    RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-    LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
-
-    # Set wanted position
-    RIGHT_MOTOR.set_position_relative(encoder_degrees)
-    LEFT_MOTOR.set_position_relative(encoder_degrees)
-    wait()
-    stop()
-
-
-def left_motor_only(distance):
-    if isclose(distance, 0):
-        return
-
-    # Compute encoder degrees
-    encoder_degrees = int(distance * DISTANCE_TO_DEGREE)
-
-    LEFT_MOTOR.set_dps(+DPS)
-
-    LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
-
-    # Set wanted position
-    LEFT_MOTOR.set_position_relative(encoder_degrees)
-    wait()
-    stop()
-
-
-def right_motor_only(distance):
-    if isclose(distance, 0):
-        return
-
-    # Compute encoder degrees
-    encoder_degrees = int(distance * DISTANCE_TO_DEGREE)
-
-    RIGHT_MOTOR.set_dps(+DPS)
-
-    RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-
-    # Set wanted position
-    RIGHT_MOTOR.set_position_relative(encoder_degrees)
-    wait()
-    stop()
 
 
 def turn(degrees: int) -> None:
@@ -309,7 +224,8 @@ def turn(degrees: int) -> None:
         # Set wanted position
         RIGHT_MOTOR.set_position_relative(-encoder_degrees)
         LEFT_MOTOR.set_position_relative(encoder_degrees)
-        wait()
+        RIGHT_MOTOR.wait_is_moving()
+        RIGHT_MOTOR.wait_is_stopped()
     finally:
         stop()
 
@@ -385,7 +301,7 @@ def check_red(encoder_degrees):
 
 def green_sweep(encoder_degrees: int) -> bool:
     sleep(SLEEP)
-    move_straight_in_office(2)
+    move(2)
     sleep(SLEEP)
 
     right()
@@ -664,7 +580,8 @@ def turn_to_line_right():
     LEFT_MOTOR.set_position_relative(65 * DEGREE_TO_ROTATION)
     wait()
 
-    right()
+    RIGHT_MOTOR.set_dps(-0.5 * DPS)
+    LEFT_MOTOR.set_dps(0.5 * DPS)
     RIGHT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
     LEFT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
     while not is_black():
@@ -684,7 +601,8 @@ def turn_to_line_left():
     LEFT_MOTOR.set_position_relative(-65 * DEGREE_TO_ROTATION)
     wait()
 
-    left()
+    RIGHT_MOTOR.set_dps(0.5 * DPS)
+    LEFT_MOTOR.set_dps(-0.5 * DPS)
     RIGHT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
     LEFT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
     while not is_black():
@@ -711,7 +629,7 @@ def check_room() -> None:
     """
 
     sleep(SLEEP)
-    found_red = check_red(30)
+    found_red = check_red(50)
     if found_red:
         return
     else:
@@ -719,11 +637,10 @@ def check_room() -> None:
         found_green = found_green_tuple[0]
         move_back_right = found_green_tuple[1]
         move_back_left = found_green_tuple[2]
-        count = found_green_tuple[3]
 
         if found_green:
             drop_block()
-            play_sound(0)
+            play_drop_sound()
             stop()
             sleep(SLEEP)
 
@@ -735,14 +652,14 @@ def check_room() -> None:
             stop()
             sleep(SLEEP)
 
-            move_back_in_office(-2 * count - 2)
+            back_to_door()
             stop()
             sleep(SLEEP)
         else:
             stop()
             sleep(SLEEP)
 
-            move_back_in_office(-2 * count - 2)
+            back_to_door()
             stop()
             sleep(SLEEP)
 
@@ -757,7 +674,7 @@ def main_move() -> None:
     # First office
     print("Going to first office")
     initiate()
-    follow_line(3 * TILE_SIZE)
+    follow_line(3 * TILE_SIZE + 2)
     sleep(SLEEP)
     turn(-90)
 
@@ -794,7 +711,7 @@ def main_move() -> None:
         move(20)
         sleep(SLEEP)
         print("At mail room")
-        play_sound(1)
+        play_victory_sound()
         exit()
     else:
         sleep(SLEEP)
@@ -842,7 +759,7 @@ def main_move() -> None:
         move(20)
         sleep(SLEEP)
         print("At mail room")
-        play_sound(1)
+        play_victory_sound()
         exit()
 
     # Fourth office
@@ -871,7 +788,7 @@ def main_move() -> None:
     move(20)
     sleep(SLEEP)
     print("At mail room")
-    play_sound(1)
+    play_victory_sound()
 
 
 if __name__ == "__main__":
