@@ -112,8 +112,8 @@ def backward() -> None:
     Moves the robot backward indefinitely.
     """
 
-    RIGHT_MOTOR.set_dps(-DPS)
-    LEFT_MOTOR.set_dps(-DPS)
+    RIGHT_MOTOR.set_dps(-0.6 * DPS)
+    LEFT_MOTOR.set_dps(-0.6 * DPS)
 
 
 def left() -> None:
@@ -399,12 +399,20 @@ def check_green(sweep_degrees):
     encoder_degrees = int(sweep_degrees * DEGREE_TO_ROTATION)
     count = 0
     found_green = False
-    while count < 10:
+
+    while True:
         count += 1
         found_green_tuple = green_sweep(encoder_degrees)
         found_green = found_green_tuple[0]
+
+        # Check for out of bounds
+        if ULTRASONIC_SENSOR.get_value() < 3 * TILE_SIZE + 2:
+            break
+
+        # Check for value found
         if found_green:
             break
+
     print(f"{count}")
     return [found_green, found_green_tuple[1], found_green_tuple[2], count]
 
@@ -654,7 +662,8 @@ def check_room() -> None:
             sleep(SLEEP)
 
             back_to_door()
-            move(1)
+            sleep(SLEEP / 2)
+            move(1.5)
             stop()
             sleep(SLEEP)
         else:
@@ -662,7 +671,8 @@ def check_room() -> None:
             sleep(SLEEP)
 
             back_to_door()
-            move(1)
+            sleep(SLEEP / 2)
+            move(1.5)
             stop()
             sleep(SLEEP)
 
@@ -677,7 +687,7 @@ def main_move() -> None:
     # First office
     print("Going to first office")
     initiate()
-    follow_line(3 * TILE_SIZE + 2)
+    follow_line(3 * TILE_SIZE + 1)
     sleep(SLEEP)
     turn(-90)
 
