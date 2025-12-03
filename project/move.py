@@ -33,10 +33,10 @@ DEGREE_TO_ROTATION = TURN_DIAMETER / WHEEL_DIAMETER
 
 # Values for functions
 DELIVERIES = 0
-DPS = 450
+DPS = 540
 POWER = DPS / 1250 * 100
 POLL = 0.01
-SLEEP = 0.5
+SLEEP = 0.3
 
 
 def play_drop_sound() -> None:
@@ -681,22 +681,22 @@ def main_move() -> None:
     # First office
     # print("Going to first office")
     initiate()
-    sleep(3 * SLEEP)
+    sleep(0.1)
     follow_line(3 * TILE_SIZE + 0.5)
-    sleep(3 * SLEEP)
+    sleep(0.6)
     turn(-90)
 
     sleep(SLEEP)
     # print("Checking first office")
     check_room()
-    sleep(3 * SLEEP)
+    sleep(0.6)
     turn_to_line_right()
-    sleep(SLEEP)
+    sleep(0.1)
 
     # Second office
     # print("Going to second office")
     follow_line(TILE_SIZE + 2)
-    sleep(3 * SLEEP)
+    sleep(0.6)
     turn(-90)
 
     sleep(SLEEP)
@@ -705,15 +705,15 @@ def main_move() -> None:
 
     # Mail room
     if DELIVERIES == 2:
-        sleep(3 * SLEEP)
+        sleep(0.6)
         turn_to_line_left()
-        sleep(SLEEP)
+        sleep(0.1)
         # print("Going to mail room")
         follow_line(2 * TILE_SIZE)
-        sleep(3 * SLEEP)
+        sleep(0.6)
         # print("Turning to mail room")
         turn(90)
-        sleep(SLEEP)
+        sleep(0.1)
         # print("Going to mail room")
         follow_line(3.1 * TILE_SIZE)
         move(20)
@@ -722,46 +722,46 @@ def main_move() -> None:
         play_victory_sound()
         exit()
     else:
-        sleep(3 * SLEEP)
+        sleep(0.6)
         turn_to_line_right()
 
     # Big corner
     # print("Going to first corner")
     follow_line(6)
-    sleep(3 * SLEEP)
+    sleep(0.6)
     # print("Turning first corner")
     turn(-77.5)
-    sleep(SLEEP)
+    sleep(0.1)
 
     # Third office
     # print("Going to third office")
     follow_line(TILE_SIZE + 2)
-    sleep(3 * SLEEP)
+    sleep(0.6)
     turn(-90)
     sleep(SLEEP)
 
     sleep(SLEEP)
     # print("Checking third office")
     check_room()
-    sleep(3 * SLEEP)
+    sleep(0.6)
     turn_to_line_right()
 
     # Big corner
     # print("Going to second corner")
     follow_line(6)
-    sleep(3 * SLEEP)
+    sleep(0.6)
     # print("Turning second corner")
     turn(-77.5)
 
     # Mail room
     if DELIVERIES == 2:
         # print("Going to mail room")
-        sleep(SLEEP)
+        sleep(0.1)
         follow_line(2 * TILE_SIZE)
-        sleep(3 * SLEEP)
+        sleep(0.6)
         # print("Turning to mail room")
         turn(-90)
-        sleep(SLEEP)
+        sleep(0.1)
         # print("Going to mail room")
         follow_line(3.1 * TILE_SIZE)
         move(20)
@@ -772,25 +772,25 @@ def main_move() -> None:
 
     # Fourth office
     # print("Going to fourth office")
-    sleep(3 * SLEEP)
+    sleep(0.1)
     follow_line(TILE_SIZE + 2)
-    sleep(3 * SLEEP)
+    sleep(0.6)
     turn(-90)
 
     sleep(SLEEP)
     # print("Checking fourth office")
     check_room()
-    sleep(3 * SLEEP)
+    sleep(0.6)
     turn_to_line_left()
 
     # Mail room
     # print("Going to mail room")
-    sleep(SLEEP)
+    sleep(0.1)
     follow_line(2 * TILE_SIZE)
-    sleep(3 * SLEEP)
+    sleep(0.6)
     # print("Turning to mail room")
     turn(90)
-    sleep(SLEEP)
+    sleep(0.1)
     # print("Going to mail room")
     follow_line(3.1 * TILE_SIZE)
     move(20)
