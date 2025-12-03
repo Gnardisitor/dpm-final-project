@@ -293,10 +293,16 @@ def check_red(encoder_degrees):
 
 
 def green_sweep(encoder_degrees: int) -> bool:
-    sleep(SLEEP)
-    move(2)
-    sleep(SLEEP)
+    sleep(0.5)
+    RIGHT_MOTOR.set_dps(450)
+    LEFT_MOTOR.set_dps(450)
+    RIGHT_MOTOR.set_position_relative(int(2 * DISTANCE_TO_DEGREE))
+    LEFT_MOTOR.set_position_relative(int(2 * DISTANCE_TO_DEGREE))
+    RIGHT_MOTOR.wait_is_moving()
+    RIGHT_MOTOR.wait_is_stopped()
+    stop()
 
+    sleep(SLEEP)
     right()
     start_degrees_right = RIGHT_MOTOR.get_position()
     start_degrees_left = LEFT_MOTOR.get_position()
@@ -417,7 +423,7 @@ def drop_block():
     global DELIVERIES
 
     # Move slightly to the right
-    sleep(0.7)
+    sleep(1)
     right()
     RIGHT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
     LEFT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
@@ -428,15 +434,15 @@ def drop_block():
     sleep(SLEEP)
 
     # Run conveyor belt to drop block
-    CONVEYOR_MOTOR.set_dps(DPS)
-    CONVEYOR_MOTOR.set_limits(dps=DPS, power=POWER)
+    CONVEYOR_MOTOR.set_dps(450)
+    CONVEYOR_MOTOR.set_limits(dps=450, power=POWER)
     CONVEYOR_MOTOR.set_position_relative(135)
     wait_drop()
     CONVEYOR_MOTOR.set_dps(0)
     sleep(SLEEP)
 
-    CONVEYOR_MOTOR.set_dps(-DPS)
-    CONVEYOR_MOTOR.set_limits(dps=DPS, power=POWER)
+    CONVEYOR_MOTOR.set_dps(-450)
+    CONVEYOR_MOTOR.set_limits(dps=450, power=POWER)
     CONVEYOR_MOTOR.set_position_relative(-90)
     wait_drop()
     CONVEYOR_MOTOR.set_dps(0)
@@ -562,7 +568,9 @@ def follow_line(distance: float) -> None:
 
             # Continue forward
             sleep(SLEEP)
-            forward()
+            # forward()
+            RIGHT_MOTOR.set_dps(450)
+            LEFT_MOTOR.set_dps(450)
 
         current_distance = ULTRASONIC_SENSOR.get_value()
         sleep(POLL)
@@ -683,20 +691,20 @@ def main_move() -> None:
     initiate()
     sleep(0.1)
     follow_line(3 * TILE_SIZE + 0.5)
-    sleep(0.6)
+    sleep(1)
     turn(-90)
 
     sleep(SLEEP)
     # print("Checking first office")
     check_room()
-    sleep(0.6)
+    sleep(1)
     turn_to_line_right()
     sleep(0.1)
 
     # Second office
     # print("Going to second office")
     follow_line(TILE_SIZE + 2)
-    sleep(0.6)
+    sleep(1)
     turn(-90)
 
     sleep(SLEEP)
@@ -705,96 +713,95 @@ def main_move() -> None:
 
     # Mail room
     if DELIVERIES == 2:
-        sleep(0.6)
+        sleep(1)
         turn_to_line_left()
-        sleep(0.1)
         # print("Going to mail room")
         follow_line(2 * TILE_SIZE)
-        sleep(0.6)
+        sleep(1)
         # print("Turning to mail room")
         turn(90)
-        sleep(0.1)
-        # print("Going to mail room")
-        follow_line(3.1 * TILE_SIZE)
-        move(20)
         sleep(SLEEP)
+        # print("Going to mail room")
+        # follow_line(3.1 * TILE_SIZE)
+        # move(20)
+        move(45)
+        # sleep(SLEEP)
         # print("At mail room")
         play_victory_sound()
         exit()
     else:
-        sleep(0.6)
+        sleep(1)
         turn_to_line_right()
 
     # Big corner
     # print("Going to first corner")
     follow_line(6)
-    sleep(0.6)
+    sleep(1)
     # print("Turning first corner")
     turn(-77.5)
-    sleep(0.1)
+    sleep(SLEEP)
 
     # Third office
     # print("Going to third office")
     follow_line(TILE_SIZE + 2)
-    sleep(0.6)
+    sleep(1)
     turn(-90)
     sleep(SLEEP)
 
     sleep(SLEEP)
     # print("Checking third office")
     check_room()
-    sleep(0.6)
+    sleep(1)
     turn_to_line_right()
 
     # Big corner
     # print("Going to second corner")
     follow_line(6)
-    sleep(0.6)
+    sleep(1)
     # print("Turning second corner")
     turn(-77.5)
 
     # Mail room
     if DELIVERIES == 2:
         # print("Going to mail room")
-        sleep(0.1)
+        sleep(SLEEP)
         follow_line(2 * TILE_SIZE)
-        sleep(0.6)
+        sleep(1)
         # print("Turning to mail room")
         turn(-90)
-        sleep(0.1)
-        # print("Going to mail room")
-        follow_line(3.1 * TILE_SIZE)
-        move(20)
         sleep(SLEEP)
+        # print("Going to mail room")
+        # follow_line(3.1 * TILE_SIZE)
+        # move(20)
+        move(45)
         # print("At mail room")
         play_victory_sound()
         exit()
 
     # Fourth office
     # print("Going to fourth office")
-    sleep(0.1)
     follow_line(TILE_SIZE + 2)
-    sleep(0.6)
+    sleep(1)
     turn(-90)
 
     sleep(SLEEP)
     # print("Checking fourth office")
     check_room()
-    sleep(0.6)
+    sleep(1)
     turn_to_line_left()
 
     # Mail room
     # print("Going to mail room")
-    sleep(0.1)
+    sleep(SLEEP)
     follow_line(2 * TILE_SIZE)
-    sleep(0.6)
+    sleep(1)
     # print("Turning to mail room")
     turn(90)
-    sleep(0.1)
-    # print("Going to mail room")
-    follow_line(3.1 * TILE_SIZE)
-    move(20)
     sleep(SLEEP)
+    # print("Going to mail room")
+    # follow_line(3.1 * TILE_SIZE)
+    # move(20)
+    move(45)
     # print("At mail room")
     play_victory_sound()
 
