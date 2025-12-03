@@ -17,9 +17,9 @@ ULTRASONIC_SENSOR = EV3UltrasonicSensor(1)
 DROP_SOUND = WaveObject.from_wave_file("sounds/drop.wav")
 VICTORY_SOUND = WaveObject.from_wave_file("sounds/victory.wav")
 
-print("Sensors waiting")
+# print("Sensors waiting")
 wait_ready_sensors()
-print("Sensors ready")
+# print("Sensors ready")
 
 # Measured values
 WHEEL_DIAMETER = 4.2
@@ -36,7 +36,7 @@ DELIVERIES = 0
 DPS = 450
 POWER = DPS / 1250 * 100
 POLL = 0.01
-SLEEP = 0.4
+SLEEP = 0.5
 
 
 def play_drop_sound() -> None:
@@ -153,10 +153,6 @@ def move(distance: float) -> None:
         The distance to move in centimeters. Positive values move forward, and negative values move backward.
     """
 
-    # Check for invalid distance
-    if isclose(distance, 0):
-        return
-
     # Compute encoder degrees
     encoder_degrees = int(distance * DISTANCE_TO_DEGREE)
 
@@ -204,10 +200,6 @@ def turn(degrees: int) -> None:
         The number of degrees to turn. Positive values turn right, and negative values turn left.
     """
 
-    # Check for invalid turn
-    if degrees == 0:
-        return
-
     # Compute encoder degrees
     encoder_degrees = int(degrees * DEGREE_TO_ROTATION)
 
@@ -219,8 +211,8 @@ def turn(degrees: int) -> None:
             left()
 
         # Set limits (makes turning work properly)
-        RIGHT_MOTOR.set_limits(dps=DPS, power=POWER)
-        LEFT_MOTOR.set_limits(dps=DPS, power=POWER)
+        RIGHT_MOTOR.set_limits(dps=0.75 * DPS, power=POWER)
+        LEFT_MOTOR.set_limits(dps=0.75 * DPS, power=POWER)
 
         # Set wanted position
         RIGHT_MOTOR.set_position_relative(-encoder_degrees)
@@ -295,8 +287,8 @@ def check_red(encoder_degrees):
 
     stop()
 
-    if red_found:
-        print("Found red")
+    # if red_found:
+    # print("Found red")
     return red_found
 
 
@@ -323,7 +315,7 @@ def green_sweep(encoder_degrees: int) -> bool:
     ):
         color = get_color()
         if color == "green":
-            print("Detected green sticker during sweep.")
+            # print("Detected green sticker during sweep.")
             stop()
             end_degrees_right = RIGHT_MOTOR.get_position()
             end_degrees_left = LEFT_MOTOR.get_position()
@@ -352,7 +344,7 @@ def green_sweep(encoder_degrees: int) -> bool:
     ):
         color = get_color()
         if color == "green":
-            print("Detected green sticker during sweep.")
+            # print("Detected green sticker during sweep.")
             stop()
             end_degrees_right = RIGHT_MOTOR.get_position()
             end_degrees_left = LEFT_MOTOR.get_position()
@@ -380,7 +372,7 @@ def green_sweep(encoder_degrees: int) -> bool:
     ):
         color = get_color()
         if color == "green":
-            print("Detected green sticker during sweep.")
+            # print("Detected green sticker during sweep.")
             stop()
             end_degrees_right = RIGHT_MOTOR.get_position()
             end_degrees_left = LEFT_MOTOR.get_position()
@@ -413,7 +405,7 @@ def check_green(sweep_degrees):
         if found_green:
             break
 
-    print(f"{count}")
+    # print(f"{count}")
     return [found_green, found_green_tuple[1], found_green_tuple[2], count]
 
 
@@ -425,7 +417,7 @@ def drop_block():
     global DELIVERIES
 
     # Move slightly to the right
-    sleep(SLEEP)
+    sleep(0.7)
     right()
     RIGHT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
     LEFT_MOTOR.set_limits(dps=0.5 * DPS, power=POWER)
@@ -483,7 +475,7 @@ def black_sweep(encoder_degrees: int) -> bool:
         isclose(LEFT_MOTOR.get_speed(), 0)
     ):
         if is_black():
-            print("Detected black line during sweep.")
+            # print("Detected black line during sweep.")
             stop()
             return True
         sleep(POLL)
@@ -506,7 +498,7 @@ def black_sweep(encoder_degrees: int) -> bool:
         isclose(LEFT_MOTOR.get_speed(), 0)
     ):
         if is_black():
-            print("Detected black line during sweep.")
+            # print("Detected black line during sweep.")
             stop()
             return True
         sleep(POLL)
@@ -528,7 +520,7 @@ def black_sweep(encoder_degrees: int) -> bool:
         isclose(LEFT_MOTOR.get_speed(), 0)
     ):
         if is_black():
-            print("Detected black line during sweep.")
+            # print("Detected black line during sweep.")
             stop()
             return True
         sleep(POLL)
@@ -551,9 +543,9 @@ def follow_line(distance: float) -> None:
     global DELIVERIES
 
     forward()
-    current_distance = ULTRASONIC_SENSOR.get_value()
+    current_distance = 200.0
     while current_distance > distance:
-        print(f"{current_distance} cm")
+        # print(f"{current_distance} cm")
 
         if not is_black() and current_distance > 15.0:
             stop()
@@ -687,122 +679,123 @@ def main_move() -> None:
     sleep(SLEEP)
 
     # First office
-    print("Going to first office")
+    # print("Going to first office")
     initiate()
-    follow_line(3 * TILE_SIZE + 1)
-    sleep(2.5 * SLEEP)
+    sleep(3 * SLEEP)
+    follow_line(3 * TILE_SIZE + 0.5)
+    sleep(3 * SLEEP)
     turn(-90)
 
     sleep(SLEEP)
-    print("Checking first office")
+    # print("Checking first office")
     check_room()
-    sleep(2.5 * SLEEP)
+    sleep(3 * SLEEP)
     turn_to_line_right()
     sleep(SLEEP)
 
     # Second office
-    print("Going to second office")
+    # print("Going to second office")
     follow_line(TILE_SIZE + 2)
-    sleep(2.5 * SLEEP)
+    sleep(3 * SLEEP)
     turn(-90)
 
     sleep(SLEEP)
-    print("Checking second office")
+    # print("Checking second office")
     check_room()
 
     # Mail room
     if DELIVERIES == 2:
-        sleep(2.5 * SLEEP)
+        sleep(3 * SLEEP)
         turn_to_line_left()
         sleep(SLEEP)
-        print("Going to mail room")
+        # print("Going to mail room")
         follow_line(2 * TILE_SIZE)
-        sleep(2.5 * SLEEP)
-        print("Turning to mail room")
+        sleep(3 * SLEEP)
+        # print("Turning to mail room")
         turn(90)
         sleep(SLEEP)
-        print("Going to mail room")
+        # print("Going to mail room")
         follow_line(3.1 * TILE_SIZE)
         move(20)
         sleep(SLEEP)
-        print("At mail room")
+        # print("At mail room")
         play_victory_sound()
         exit()
     else:
-        sleep(2.5 * SLEEP)
+        sleep(3 * SLEEP)
         turn_to_line_right()
 
     # Big corner
-    print("Going to first corner")
+    # print("Going to first corner")
     follow_line(6)
-    sleep(2.5 * SLEEP)
-    print("Turning first corner")
+    sleep(3 * SLEEP)
+    # print("Turning first corner")
     turn(-77.5)
     sleep(SLEEP)
 
     # Third office
-    print("Going to third office")
+    # print("Going to third office")
     follow_line(TILE_SIZE + 2)
-    sleep(2.5 * SLEEP)
+    sleep(3 * SLEEP)
     turn(-90)
     sleep(SLEEP)
 
     sleep(SLEEP)
-    print("Checking third office")
+    # print("Checking third office")
     check_room()
-    sleep(2.5 * SLEEP)
+    sleep(3 * SLEEP)
     turn_to_line_right()
 
     # Big corner
-    print("Going to second corner")
+    # print("Going to second corner")
     follow_line(6)
-    sleep(2.5 * SLEEP)
-    print("Turning second corner")
+    sleep(3 * SLEEP)
+    # print("Turning second corner")
     turn(-77.5)
 
     # Mail room
     if DELIVERIES == 2:
-        print("Going to mail room")
+        # print("Going to mail room")
         sleep(SLEEP)
         follow_line(2 * TILE_SIZE)
-        sleep(2.5 * SLEEP)
-        print("Turning to mail room")
+        sleep(3 * SLEEP)
+        # print("Turning to mail room")
         turn(-90)
         sleep(SLEEP)
-        print("Going to mail room")
+        # print("Going to mail room")
         follow_line(3.1 * TILE_SIZE)
         move(20)
         sleep(SLEEP)
-        print("At mail room")
+        # print("At mail room")
         play_victory_sound()
         exit()
 
     # Fourth office
-    print("Going to fourth office")
-    sleep(2.5 * SLEEP)
+    # print("Going to fourth office")
+    sleep(3 * SLEEP)
     follow_line(TILE_SIZE + 2)
-    sleep(2.5 * SLEEP)
+    sleep(3 * SLEEP)
     turn(-90)
 
     sleep(SLEEP)
-    print("Checking fourth office")
+    # print("Checking fourth office")
     check_room()
-    sleep(2.5 * SLEEP)
+    sleep(3 * SLEEP)
     turn_to_line_left()
 
     # Mail room
-    print("Going to mail room")
+    # print("Going to mail room")
     sleep(SLEEP)
     follow_line(2 * TILE_SIZE)
-    sleep(2.5 * SLEEP)
-    print("Turning to mail room")
+    sleep(3 * SLEEP)
+    # print("Turning to mail room")
     turn(90)
     sleep(SLEEP)
-    print("Going to mail room")
+    # print("Going to mail room")
     follow_line(3.1 * TILE_SIZE)
     move(20)
     sleep(SLEEP)
-    print("At mail room")
+    # print("At mail room")
     play_victory_sound()
 
 
@@ -810,14 +803,14 @@ if __name__ == "__main__":
     # Create process for movement
     move_process = Process(target=main_move)
     move_process.start()
-    print("Movement process started")
+    # print("Movement process started")
 
     # Wait for movement to finish
     while move_process.is_alive() and not interrupt():
         sleep(POLL)
 
     stop()
-    print("Movement process stopping")
+    # print("Movement process stopping")
     move_process.terminate()
     move_process.join()
-    print("Movement process ended")
+    # print("Movement process ended")
